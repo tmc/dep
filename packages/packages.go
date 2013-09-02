@@ -9,23 +9,23 @@ import (
 )
 
 var (
-	GOPATH   = os.Getenv("GOPATH")
-	GOROOT   = runtime.GOROOT()
-	PkgCache = map[string]*Pkg{}
+	GOPATH       = os.Getenv("GOPATH")
+	GOROOT       = runtime.GOROOT()
+	PackageCache = map[string]*Package{}
 )
 
-type Pkg struct {
+type Package struct {
 	Path     string
 	Internal bool `json:"-"`
 	Imports  map[string]bool
 	Exports  map[string]interface{}
 }
 
-func (ø *Pkg) ParseExports() {
+func (ø *Package) ParseExports() {
 	ø.Exports = exports.Exports(ø.Path)
 }
 
-func (ø *Pkg) ParseImports() {
+func (ø *Package) ParseImports() {
 	dir := path.Join(GOPATH, "src", ø.Path)
 	pkg, err := build.Default.ImportDir(dir, build.AllowBinary)
 	if err != nil {
@@ -50,13 +50,13 @@ func (ø *Pkg) ParseImports() {
 	return
 }
 
-func Get(path string) (ø *Pkg) {
-	if p, ok := PkgCache[path]; ok {
+func Get(path string) (ø *Package) {
+	if p, ok := PackageCache[path]; ok {
 		return p
 	}
-	ø = &Pkg{Path: path}
+	ø = &Package{Path: path}
 	ø.Imports = map[string]bool{}
-	PkgCache[path] = ø
+	PackageCache[path] = ø
 	ø.ParseImports()
 	ø.ParseExports()
 	return
