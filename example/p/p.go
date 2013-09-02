@@ -1,0 +1,47 @@
+package p
+
+const (
+	C     = "const"
+	I int = iota
+)
+
+var VarSval = "huho"
+var VarS string
+var Z = &TypeStruct{A: "hu"}
+
+var (
+	X int = 3
+)
+
+type Int int
+
+type String string
+
+type TypeStruct struct {
+	A, B string
+	C    int
+	D    *TypeStruct
+	E    TypeInterface
+	F    interface {
+		String() string
+	}
+}
+
+func (ø *TypeStruct) String() string {
+	return ø.A
+}
+
+type TypeInterface interface {
+	Name() (s string)
+	Pos() interface{}
+	Other(i interface{}) string
+	Parent() TypeInterface
+	Other2() (string, error)
+	In(a string, b int)
+	In2(a, b string)
+	In3(string, int)
+}
+
+func Func(i interface{}) string {
+	return "huho"
+}
