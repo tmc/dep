@@ -1,7 +1,7 @@
 package q
 
 import (
-	"fmt"
+	`fmt`
 	"github.com/metakeule/dep/example/p"
 	i "io"
 )
@@ -11,6 +11,12 @@ var B = fmt.Print
 
 type C struct{}
 
+var X = &p.TypeStruct{}
+
 func P(i.Reader) {
+
+}
+
+func Q(*p.TypeStruct) {
 
 }

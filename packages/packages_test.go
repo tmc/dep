@@ -46,8 +46,8 @@ func TestPath(t *testing.T) {
 func TestExports(t *testing.T) {
 	pkg := Get(testPkg)
 
-	if len(pkg.Exports) != 4 {
-		t.Errorf("package %s should have 4 exports, but has: %v", testPkg, len(pkg.Exports))
+	if len(pkg.Exports) != 6 {
+		t.Errorf("package %s should have 6 exports, but has: %v", testPkg, len(pkg.Exports))
 	}
 
 	if pkg.Exports["A"] == nil {
@@ -87,8 +87,21 @@ func TestExports(t *testing.T) {
 		t.Errorf("package %s should have export P of type *typ.FuncDecl with 1 parameter, but has %T", testPkg, len(fn.Params))
 
 	}
-	if fn.Params[0] != "i.Reader" {
-		t.Errorf("package %s should have export P of type *typ.FuncDecl with 1 parameter of type i.Reader, but has %v", testPkg, fn.Params[0])
+	if fn.Params[0] != "io.Reader" {
+		t.Errorf("package %s should have export P of type *typ.FuncDecl with 1 parameter of type io.Reader, but has %v", testPkg, fn.Params[0])
+	}
+
+	if _, ok := pkg.Exports["Q"].(*typ.FuncDecl); !ok {
+		t.Errorf("package %s should have export Q of type *typ.FuncDecl, but has %T", testPkg, pkg.Exports["Q"])
+
+	}
+	fn = pkg.Exports["Q"].(*typ.FuncDecl)
+	if len(fn.Params) != 1 {
+		t.Errorf("package %s should have export Q of type *typ.FuncDecl with 1 parameter, but has %T", testPkg, len(fn.Params))
+
+	}
+	if fn.Params[0] != "*github.com/metakeule/dep/example/p.TypeStruct" {
+		t.Errorf("package %s should have export P of type *typ.FuncDecl with 1 parameter of type *github.com/metakeule/dep/example/p.TypeStruct, but has %v", testPkg, fn.Params[0])
 	}
 }
 
