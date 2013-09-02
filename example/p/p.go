@@ -9,6 +9,8 @@ var VarSval = "huho"
 var VarS string
 var Z = &TypeStruct{A: "hu"}
 
+var k = "ho"
+
 var (
 	X int = 3
 )
@@ -40,8 +42,18 @@ type TypeInterface interface {
 	In(a string, b int)
 	In2(a, b string)
 	In3(string, int)
+	InterFDefIn(i interface {
+		String() string
+	})
 }
 
 func Func(i interface{}) string {
 	return "huho"
+}
+
+func ByteFuncIn(b []byte) {
+}
+
+func ByteFuncOut() []byte {
+	return []byte("hu")
 }

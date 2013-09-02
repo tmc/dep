@@ -22,5 +22,6 @@ func main() {
 	fmt.Println(
 		getPkg("github.com/metakeule/dep/example/p"),
 		getPkg("github.com/metakeule/dep/example/q"),
+		getPkg("fmt"),
 	)
 }
