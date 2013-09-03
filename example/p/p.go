@@ -57,3 +57,15 @@ func ByteFuncIn(b []byte) {
 func ByteFuncOut() []byte {
 	return []byte("hu")
 }
+
+type hiddenExport struct{}
+
+func (ø *hiddenExport) Public() {}
+
+func MakeHidden() *hiddenExport {
+	return &hiddenExport{}
+}
+
+type hidden struct{}
+
+func (ø *hidden) Public() {}

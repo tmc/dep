@@ -1,6 +1,8 @@
 package packages
 
 import (
+	"encoding/json"
+	"strings"
 	// "fmt"
 	"github.com/metakeule/exports"
 	"go/build"
@@ -16,26 +18,50 @@ var (
 	PackageCache = map[string]*Package{}
 )
 
+type packageJson struct {
+	Path        string
+	Exports     map[string]string
+	UsedImports map[string]string
+}
+
 type Package struct {
 	Path            string
 	Internal        bool `json:"-"`
 	Imports         map[string]bool
-	Exports         map[string]interface{}
-	ExternalExports map[string]interface{}
+	Exports         map[string]exports.Declaration
+	ExternalExports map[string]exports.Declaration
+}
+
+func (ø *Package) MarshalJSON() ([]byte, error) {
+	p := &packageJson{
+		Path:        ø.Path,
+		Exports:     map[string]string{},
+		UsedImports: map[string]string{},
+	}
+
+	for name, decl := range ø.Exports {
+		p.Exports[name] = decl.String()
+	}
+
+	for name, decl := range ø.ExternalExports {
+		p.UsedImports[name] = decl.String()
+	}
+	return json.Marshal(p)
 }
 
 func (ø *Package) ParseExternalExports() {
-	expr := exports.SelectorExpressions(ø.Path)
+	expr := exports.GetUsedImports(ø.Path)
 
-	for k, _ := range expr {
+	for _, k := range expr {
 		//fmt.Printf("expr: %#v\n", k)
-		ø.ExternalExports[k[0]+"#"+k[1]] = Get(k[0]).Exports[k[1]]
+		a := strings.Split(k, "#")
+		ø.ExternalExports[k] = Get(a[0]).Exports[a[1]]
 	}
 
 }
 
 func (ø *Package) ParseExports() {
-	ø.Exports = exports.Exports(ø.Path)
+	ø.Exports = exports.GetExports(ø.Path)
 }
 
 func (ø *Package) ParseImports() {
@@ -75,7 +101,7 @@ func Get(path string) (ø *Package) {
 	}
 	ø = &Package{Path: path}
 	ø.Imports = map[string]bool{}
-	ø.ExternalExports = map[string]interface{}{}
+	ø.ExternalExports = map[string]exports.Declaration{}
 	PackageCache[path] = ø
 	ø.ParseImports()
 	ø.ParseExports()

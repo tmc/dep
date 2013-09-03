@@ -20,3 +20,9 @@ func P(i.Reader) {
 func Q(*p.TypeStruct) {
 
 }
+
+func u(i.ByteWriter) (shown int) {
+	return 0
+}
+
+var CC = &C{}

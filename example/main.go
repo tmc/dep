@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/metakeule/dep/packages"
-	"github.com/metakeule/exports"
+	// "github.com/metakeule/exports"
 )
 
 var _ = fmt.Print
@@ -19,15 +19,20 @@ func getPkg(path string) string {
 	return string(b)
 }
 
+//var pkg = "github.com/metakeule/dep/example/p"
+var pkg = "github.com/metakeule/dep/example/q"
+
 func main() {
 
-	fmt.Println(
-		//		getPkg("github.com/metakeule/dep/example/p"),
-		getPkg("github.com/metakeule/dep/example/q"),
-		//		getPkg("fmt"),
-	)
-
-	_ = exports.SelectorExpressions
+	fmt.Println(getPkg(pkg))
+	/*
+		fmt.Println(
+			//		getPkg("github.com/metakeule/dep/example/p"),
+			getPkg("github.com/metakeule/dep/example/q"),
+			//		getPkg("fmt"),
+		)
+	*/
+	//	_ = exports.SelectorExpressions
 
 	/*
 		expr := exports.SelectorExpressions("github.com/metakeule/dep/example/q")
