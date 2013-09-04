@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/metakeule/dep/packages"
+	"github.com/metakeule/exports"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,7 +16,7 @@ import (
 var _ = fmt.Print
 
 func pkgJson(path string) (b []byte, internal bool) {
-	p := packages.Get(path)
+	p := exports.Get(path)
 	internal = p.Internal
 	var err error
 	b, err = json.MarshalIndent(p, "", "   ")
@@ -32,7 +32,7 @@ func scan(dir string) (b []byte, internal bool) {
 		panic(err.Error())
 	}
 	//fmt.Println(dir)
-	b, internal = pkgJson(packages.PkgPath(dir))
+	b, internal = pkgJson(exports.PkgPath(dir))
 	b = append(b, []byte("\n")...)
 	return
 }
@@ -58,12 +58,12 @@ var depRegistryRoot = path.Join(depPATH, goROOT, "dep")
 // TODO: initialize the dependancies for the core libs on the first start
 // and if GOROOT has changed
 
-func readRegisterFile(dir string, internal bool) (*packages.Package, error) {
+func readRegisterFile(dir string, internal bool) (*exports.Package, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	trimmedPath := packages.PkgPath(dir)
+	trimmedPath := exports.PkgPath(dir)
 	// homedir := os.Getenv("HOME")
 	registerPath := path.Join(depRegistry, trimmedPath)
 
@@ -77,7 +77,7 @@ func readRegisterFile(dir string, internal bool) (*packages.Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &packages.Package{}
+	p := &exports.Package{}
 	err = json.Unmarshal(b, p)
 	return p, err
 }
@@ -87,7 +87,7 @@ func writeRegisterFile(dir string, data []byte, internal bool) error {
 	if err != nil {
 		return err
 	}
-	trimmedPath := packages.PkgPath(dir)
+	trimmedPath := exports.PkgPath(dir)
 	// homedir := os.Getenv("HOME")
 	registerPath := path.Join(depRegistry, trimmedPath)
 

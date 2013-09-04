@@ -3,14 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/metakeule/dep/packages"
+	"github.com/metakeule/exports"
 	// "github.com/metakeule/exports"
 )
 
 var _ = fmt.Print
 
 func getPkg(path string) string {
-	p := packages.Get(path)
+	p := exports.Get(path)
 
 	b, err := json.MarshalIndent(p, "", "   ")
 	if err != nil {
