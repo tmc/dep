@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -35,12 +34,6 @@ func scan(dir string) (b []byte, internal bool) {
 	b, internal = pkgJson(exports.PkgPath(dir))
 	b = append(b, []byte("\n")...)
 	return
-}
-
-func checksum(s string) string {
-	h := md5.New()
-	io.WriteString(h, s)
-	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // for temporary installations
@@ -108,7 +101,7 @@ func writeRegisterFile(dir string, data []byte, internal bool) error {
 		return err
 	}
 
-	chk := checksum(string(data))
+	chk := exports.Md5(string(data))
 	file = path.Join(registerPath, "dep.md5")
 	fmt.Printf("writing %s\n", file)
 	return ioutil.WriteFile(file, []byte(chk), 0644)
@@ -121,38 +114,12 @@ func writeDepFile(dir string, data []byte) error {
 	return ioutil.WriteFile(file, data, 0644)
 }
 
-var commands = map[string]*flag.FlagSet{
-	"info":     flag.NewFlagSet("info", flag.ContinueOnError),
-	"init":     flag.NewFlagSet("init", flag.ContinueOnError),
-	"register": flag.NewFlagSet("register", flag.ContinueOnError),
-}
+var commands = map[string]*flag.FlagSet{}
+var commandHandles = map[string]func(*flag.FlagSet){}
 
-var commandHandles = map[string]func(*flag.FlagSet){
-	"info": func(fs *flag.FlagSet) {
-		dir := fs.Arg(0)
-		b, _ := scan(dir)
-		fmt.Printf("%s", b)
-	},
-
-	"init": func(fs *flag.FlagSet) {
-		dir := fs.Arg(0)
-		b, internal := scan(dir)
-		if internal {
-			panic("can't init internal package " + dir)
-		}
-		err := writeDepFile(dir, b)
-		if err != nil {
-			panic(err.Error())
-		}
-	},
-	"register": func(fs *flag.FlagSet) {
-		dir := fs.Arg(0)
-		b, internal := scan(dir)
-		err := writeRegisterFile(dir, b, internal)
-		if err != nil {
-			panic(err.Error())
-		}
-	},
+func addCommand(name string, fn func(*flag.FlagSet)) {
+	commands[name] = flag.NewFlagSet(name, flag.ContinueOnError)
+	commandHandles[name] = fn
 }
 
 func init() {
