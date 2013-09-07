@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/metakeule/exports"
-	"io"
+	//	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -137,6 +137,7 @@ func init() {
 	//Init.Args()
 }
 
+/*
 func main() {
 	flag.Parse()
 	args := flag.Args()
@@ -158,3 +159,4 @@ func main() {
 	// fmt.Println(initArgs)
 	//fmt.Println(string(pkgJson(pkg)))
 }
+*/

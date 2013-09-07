@@ -1,8 +1,9 @@
-package dep
+package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"path/filepath"
+	// "encoding/json"
 	"fmt"
 	"github.com/metakeule/exports"
 	"io/ioutil"
@@ -18,7 +19,7 @@ func getJson(pkg string) string {
 }
 
 func loadJson(pkgPath string) (ø *exports.PackageJSON) {
-	file := filepath.Abs(path.Join(goPATH, "src", pkgPath, "dep.json"))
+	file, _ := filepath.Abs(path.Join(goPATH, "src", pkgPath, "dep.json"))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err.Error())
@@ -27,6 +28,25 @@ func loadJson(pkgPath string) (ø *exports.PackageJSON) {
 	if err != nil {
 		panic(err.Error())
 	}
+	return
+}
+
+func MapEqual(a map[string]string, b map[string]string) bool {
+
+	for k, v := range a {
+		if v != b[k] {
+			return false
+		}
+	}
+
+	for k, _ := range b {
+		_, exists := a[k]
+		if !exists {
+			return false
+		}
+	}
+
+	return true
 }
 
 func packageDiff(old_ *exports.PackageJSON, new_ *exports.PackageJSON) string {
@@ -39,7 +59,7 @@ func packageDiff(old_ *exports.PackageJSON, new_ *exports.PackageJSON) string {
 				new_.Path))
 	}
 
-	if old_.Exports != new_.Exports {
+	if !MapEqual(old_.Exports, new_.Exports) {
 
 		visited := map[string]bool{}
 		for old_key, old_val := range old_.Exports {
@@ -58,4 +78,5 @@ func packageDiff(old_ *exports.PackageJSON, new_ *exports.PackageJSON) string {
 		}
 
 	}
+	return buffer.String()
 }

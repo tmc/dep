@@ -23,7 +23,7 @@ func getPkg(path string) string {
 var pkg = "github.com/metakeule/dep/example/q"
 
 func main() {
-
+	//fmt.Printf("%v\n", exports.GetUsedImports(pkg))
 	fmt.Println(getPkg(pkg))
 	/*
 		fmt.Println(

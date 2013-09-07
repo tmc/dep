@@ -1,55 +1,72 @@
-package dep
+package main
 
 import (
-	"flag"
+	"github.com/codegangsta/cli"
 )
 
-func _init(fs *flag.FlagSet) {
-	fs.Args()
-	dir := fs.Arg(0)
-	b, internal := scan(dir)
-	if internal {
-		panic("can't init internal package " + dir)
-	}
-	err := writeDepFile(dir, b)
-	if err != nil {
-		panic(err.Error())
-	}
+// func(c *cli.Context) ErrorCode
+// (c *cli.Context) ErrorCode
+func _init(c *cli.Context) ErrorCode {
+	//fs.Args()
+	//dir := fs.Arg(0)
+	/*
+		b, internal := scan(dir)
+		if internal {
+			panic("can't init internal package " + dir)
+		}
+		err := writeDepFile(dir, b)
+		if err != nil {
+			panic(err.Error())
+		}
+	*/
+	return 0
 }
 
-func _info(fs *flag.FlagSet) {
-	dir := fs.Arg(0)
-	b, _ := scan(dir)
-	fmt.Printf("%s", b)
+func _info(c *cli.Context) ErrorCode {
+	/*
+		dir := fs.Arg(0)
+		b, _ := scan(dir)
+		fmt.Printf("%s", b)
+	*/
+	return 0
 }
 
-func _register(fs *flag.FlagSet) {
-	dir := fs.Arg(0)
-	b, internal := scan(dir)
-	err := writeRegisterFile(dir, b, internal)
-	if err != nil {
-		panic(err.Error())
-	}
+func _register(c *cli.Context) ErrorCode {
+	/*
+		dir := fs.Arg(0)
+		b, internal := scan(dir)
+		err := writeRegisterFile(dir, b, internal)
+		if err != nil {
+			panic(err.Error())
+		}
+	*/
+	return 0
 }
 
-func _diff(fs *flag.FlagSet) {
+func _diff(c *cli.Context) ErrorCode {
+	return 0
 }
 
-func _update(fs *flag.FlagSet) {
+func _store(c *cli.Context) ErrorCode {
+	return 0
 }
 
-func _fix(fs *flag.FlagSet) {
+func _update(c *cli.Context) ErrorCode {
+	return 0
 }
 
-func _install(fs *flag.FlagSet) {
+func _fix(c *cli.Context) ErrorCode {
+	return 0
 }
 
-func init() {
-	addCommand("info", _info)
-	addCommand("init", _init)
-	addCommand("register", _register)
-	addCommand("diff", _diff)
-	addCommand("update", _update)
-	addCommand("fix", _fix)
-	addCommand("install", _install)
+func _install(c *cli.Context) ErrorCode {
+	return 0
+}
+
+func _get(c *cli.Context) ErrorCode {
+	return 0
+}
+
+func _lint(c *cli.Context) ErrorCode {
+	return 0
 }

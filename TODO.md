@@ -32,7 +32,7 @@
 ##### diff
 ##### update
 ##### fix: try to find a common revision that all dependant packages may work with for all not working dependancies
-##### install: install a package be trying to install it first into the tentative GOPATH
+##### get: get a package be trying to install it first into the tentative GOPATH
 and then check the dependancies, if a revision is known checkout the revision and do it recursively for all package dependancies.
 
 #### all: do something with all packages in GOPATH

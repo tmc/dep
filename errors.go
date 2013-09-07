@@ -1,9 +1,9 @@
-package dep
+package main
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
-	"github.com/metakeule/exports"
+	// "github.com/codegangsta/cli"
+	// "github.com/metakeule/exports"
 	"os"
 	"path"
 )
@@ -35,6 +35,9 @@ var (
 	PACKAGE_PATH string
 	// the physical path of the package
 	PACKAGE_DIR string
+	// are all packages affected
+	ALL       bool
+	RECURSIVE bool
 )
 
 func init() {
@@ -65,7 +68,7 @@ var ErrorCodeInfos = map[ErrorCode]string{
 }
 
 func (ø ErrorCode) String() string {
-	return ErrorCodeInfos[o]
+	return ErrorCodeInfos[ø]
 }
 
 var _cleanup = []func(){}

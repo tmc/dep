@@ -20,17 +20,17 @@ func (d pqdrv) Open(name string) (driver.Conn, error) { return drv.Open(name) }
 var dbFile = "/home/benny/Entwicklung/gopath/src/github.com/metakeule/dep/db/packages.db"
 var db *sql.DB
 
-type pkg struct {
+type Pkg struct {
 	Package    string
 	JsonMd5    string
-	Json       string
+	Json       []byte
 	ImportsMd5 string
 	ExportsMd5 string
 	MainMd5    string
 	InitMd5    string
 }
 
-func UpdatePackage(p *pkg, i []*imp, e []*exp) (err error) {
+func UpdatePackage(p *Pkg, i []*Imp, e []*Exp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
@@ -60,7 +60,15 @@ func UpdatePackage(p *pkg, i []*imp, e []*exp) (err error) {
 		return
 	}
 
-	// TODO: remove all old imports and exports
+	err = _deleteExports(p.Package, tx)
+	if err != nil {
+		return
+	}
+
+	err = _deleteImports(p.Package, tx)
+	if err != nil {
+		return
+	}
 
 	err = _insertImports(tx, i...)
 	if err != nil {
@@ -75,16 +83,16 @@ func UpdatePackage(p *pkg, i []*imp, e []*exp) (err error) {
 	return
 }
 
-func GetImports(importedPkg string) (imps []*imp, err error) {
+func GetImported(importedPkg string) (imps []*Imp, err error) {
 	var rows *sql.Rows
-	imps = []*imp{}
+	imps = []*Imp{}
 	rows, err = db.Query("select package, import, name, value from imports where import = ?", importedPkg)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		i := &imp{}
+		i := &Imp{}
 		err = rows.Scan(&i.Package, &i.Import, &i.Name, &i.Value)
 		if err != nil {
 			return
@@ -94,9 +102,9 @@ func GetImports(importedPkg string) (imps []*imp, err error) {
 	return
 }
 
-func GetPackage(packagePath string) (p *pkg, err error) {
+func GetPackage(packagePath string) (p *Pkg, err error) {
 	var row *sql.Row
-	p = &pkg{}
+	p = &Pkg{}
 	row = db.QueryRow("select package, importsmd5, exportsmd5, mainmd5, initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
 	err = row.Scan(&p.Package, &p.ImportsMd5, &p.ExportsMd5, &p.MainMd5, &p.InitMd5, &p.JsonMd5, &p.Json)
 	if err != nil {
@@ -105,7 +113,7 @@ func GetPackage(packagePath string) (p *pkg, err error) {
 	return
 }
 
-func insertPackages(p ...*pkg) (err error) {
+func insertPackages(p ...*Pkg) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
@@ -131,13 +139,13 @@ func insertPackages(p ...*pkg) (err error) {
 	return
 }
 
-type exp struct {
+type Exp struct {
 	Package string
 	Name    string
 	Value   string
 }
 
-func _insertExports(tx *sql.Tx, e ...*exp) (err error) {
+func _insertExports(tx *sql.Tx, e ...*Exp) (err error) {
 	var stmt *sql.Stmt
 	stmt, err = tx.Prepare("insert into exports(package, name, value) values(?, ?, ?)")
 	if err != nil {
@@ -153,7 +161,50 @@ func _insertExports(tx *sql.Tx, e ...*exp) (err error) {
 	return
 }
 
-func insertExports(e ...*exp) (err error) {
+func _deleteExports(pkgPath string, tx *sql.Tx) (err error) {
+	_, err = tx.Exec(`delete from exports where package = ?`, pkgPath)
+	return
+}
+
+func _deleteImports(pkgPath string, tx *sql.Tx) (err error) {
+	_, err = tx.Exec(`delete from imports where package = ?`, pkgPath)
+	return
+}
+
+func _deletePackage(pkgPath string, tx *sql.Tx) (err error) {
+	_, err = tx.Exec(`delete from packages where package = ?`, pkgPath)
+	return
+}
+
+func deletePackage(pkgPath string) (err error) {
+	var tx *sql.Tx
+	defer func() {
+		if err != nil && tx != nil {
+			tx.Rollback()
+		}
+	}()
+	tx, err = db.Begin()
+	if err != nil {
+		return
+	}
+	err = _deleteExports(pkgPath, tx)
+	if err != nil {
+		return
+	}
+	err = _deleteImports(pkgPath, tx)
+	if err != nil {
+		return
+	}
+
+	err = _deletePackage(pkgPath, tx)
+	if err != nil {
+		return
+	}
+	tx.Commit()
+	return
+}
+
+func insertExports(e ...*Exp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
@@ -172,14 +223,14 @@ func insertExports(e ...*exp) (err error) {
 	return
 }
 
-type imp struct {
+type Imp struct {
 	Package string
 	Import  string
 	Name    string
 	Value   string
 }
 
-func _insertImports(tx *sql.Tx, im ...*imp) (err error) {
+func _insertImports(tx *sql.Tx, im ...*Imp) (err error) {
 	var stmt *sql.Stmt
 	stmt, err = tx.Prepare("insert into imports(package, import, name, value) values(?, ?, ?, ?)")
 	if err != nil {
@@ -195,7 +246,7 @@ func _insertImports(tx *sql.Tx, im ...*imp) (err error) {
 	return
 }
 
-func insertImports(im ...*imp) (err error) {
+func insertImports(im ...*Imp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
@@ -245,7 +296,7 @@ func createTables() {
             mainmd5         text not null,
             initmd5         text not null,
             jsonmd5         text not null,
-            json            text not null
+            json            blob not null
         )`,
 		`
         create table exports (
@@ -316,19 +367,19 @@ func run() {
 		//vals = append(vals, data...)
 		//fmt.Println(vals...)
 	}
-
+	// createTables()
 	cleanupTables()
 	prefill()
 
-	var p *pkg
+	var p *Pkg
 	p, err = GetPackage("github.com/metakeule/dep")
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Printf("%#v\n", p)
+	fmt.Printf("Package: %s\nJson: %s\n", p.Package, p.Json)
 
-	var imps []*imp
-	imps, err = GetImports("github.com/metakeule/dep/packages")
+	var imps []*Imp
+	imps, err = GetImported("github.com/metakeule/dep/packages")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -342,37 +393,10 @@ func run() {
 
 }
 
-/*
-    {
-   "Path": "github.com/metakeule/dep",
-   "Exports": {},
-   "UsedImports": {
-      "encoding/json#MarshalIndent": "MarshalIndent(interface{},string,string)([]byte,error)",
-      "flag#Args": "Args()([]string)",
-      "flag#ContinueOnError": "ContinueOnError ErrorHandling",
-      "flag#FlagSet": "type FlagSet struct {\n  Usage ()()\n}",
-      "flag#NewFlagSet": "NewFlagSet(string,ErrorHandling)(*FlagSet)",
-      "flag#Parse": "Parse()()",
-      "flag#Usage": "Usage ()()",
-      "fmt#Print": "Print(...interface{})(int,error)",
-      "fmt#Printf": "Printf(string,...interface{})(int,error)",
-      "fmt#Println": "Println(...interface{})(int,error)",
-      "github.com/metakeule/dep/packages#Get": "Get(string)(*Package)",
-      "github.com/metakeule/dep/packages#PkgPath": "PkgPath(string)(string)",
-      "io/ioutil#WriteFile": "WriteFile(string,[]byte,os#FileMode)(error)",
-      "os#Exit": "Exit(int)()",
-      "path#Join": "Join(...string)(string)",
-      "path/filepath#Abs": "Abs(string)(string,error)"
-   }
-}
-
-*/
-var p = &pkg{}
-
-var packages = []*pkg{
+var packages = []*Pkg{
 	{
 		Package: "github.com/metakeule/dep",
-		Json: `
+		Json: []byte(`
 {
    "Path": "github.com/metakeule/dep",
    "Exports": {},
@@ -380,11 +404,11 @@ var packages = []*pkg{
       "github.com/metakeule/dep/packages#Get": "Get(string)(*Package)",
       "github.com/metakeule/dep/packages#PkgPath": "PkgPath(string)(string)",      
    }
-}`,
+}`),
 	},
 }
-var i *imp
-var imports = []*imp{
+var i *Imp
+var imports = []*Imp{
 	{
 		Import:  "github.com/metakeule/dep/packages",
 		Package: "github.com/metakeule/dep",
