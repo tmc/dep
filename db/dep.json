@@ -1,0 +1,24 @@
+[
+   {
+      "Path": "github.com/metakeule/dep/db",
+      "Exports": {
+         "DBWrapper": "DBWrapper *github.com/metakeule/dbwrap#Wrapper",
+         "DeletePackage": "DeletePackage(*Pkg,[]*Imp,[]*Exp)(error)",
+         "Exp": "type Exp struct {\n  Package string\n  Name string\n  Value string\n}",
+         "GetImported": "GetImported(string)([]*Imp,error)",
+         "GetPackage": "GetPackage(string)(*Pkg,error)",
+         "Imp": "type Imp struct {\n  Package string\n  Import string\n  Name string\n  Value string\n}",
+         "InsertExports": "InsertExports(...*Exp)(error)",
+         "InsertImports": "InsertImports(...*Imp)(error)",
+         "InsertPackages": "InsertPackages(...*Pkg)(error)",
+         "Open": "Open(string)(error)",
+         "Pkg": "type Pkg struct {\n  Package string\n  JsonMd5 string\n  Json []byte\n  ImportsMd5 string\n  ExportsMd5 string\n  MainMd5 string\n  InitMd5 string\n}",
+         "UpdatePackage": "UpdatePackage(*Pkg,[]*Imp,[]*Exp)(error)"
+      },
+      "Imports": {
+         "github.com/mattn/go-sqlite3#SQLiteDriver": "type SQLiteDriver struct {\n  Extensions []string\n  ConnectHook (*SQLiteConn)(error)\n}",
+         "github.com/metakeule/dbwrap#New": "New(string,driver.Driver)(*Wrapper)",
+         "github.com/metakeule/dbwrap#Wrapper": "type Wrapper struct {\n  HandleBegin (driver.Conn)(driver.Tx,error)\n  HandlePrepare (driver.Conn,string)(driver.Stmt,error)\n  HandleExec (driver.Execer,string,[]driver.Value)(driver.Result,error)\n  AfterAll (driver.Conn,string,...interface{})()\n   driver.Driver\n  HandleOpen (string,driver.Conn)(driver.Conn,error)\n  HandleClose (driver.Conn)(error)\n  HandleQuery (driver.Queryer,string,[]driver.Value)(driver.Rows,error)\n  BeforeAll (driver.Conn,string,...interface{})()\n}"
+      }
+   }
+]

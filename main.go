@@ -2,17 +2,79 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/metakeule/exports"
+	"go/build"
 	//	"io"
+	// "go/parser"
+	// "go/token"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 )
 
+/*
+Default
+*/
+
 var _ = fmt.Print
+
+type allPkgParser struct {
+	packages map[string]bool
+}
+
+func (ø *allPkgParser) Walker(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		pkg, err := build.Default.ImportDir(path, build.ImportMode(0))
+		if err == nil && pkg != nil {
+			ø.packages[pkg.ImportPath] = true
+		}
+	}
+	return nil
+}
+
+func packages() (a []*exports.Package) {
+	a = []*exports.Package{}
+	prs := &allPkgParser{map[string]bool{}}
+
+	if !RECURSIVE {
+		if PACKAGE.Internal {
+			//fmt.Printf("skipping internal package %#v\n", PACKAGE.Path)
+			return
+		}
+		a = append(a, PACKAGE)
+		return
+	}
+
+	err := filepath.Walk(PACKAGE_DIR, prs.Walker)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for fp, _ := range prs.packages {
+		//fmt.Println(fp)
+		pkg := exports.Get(fp)
+		if pkg.Internal {
+			//fmt.Printf("skipping internal package %#v\n", pkg.Path)
+			continue
+		}
+		a = append(a, pkg)
+	}
+	return
+}
+
+func asJson(pkgs ...*exports.Package) (b []byte) {
+	var err error
+	b, err = json.MarshalIndent(pkgs, "", "   ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return
+}
 
 func pkgJson(path string) (b []byte, internal bool) {
 	p := exports.Get(path)
@@ -36,21 +98,10 @@ func scan(dir string) (b []byte, internal bool) {
 	return
 }
 
-// for temporary installations
-var depPATH = path.Join(os.Getenv("HOME"), ".dep")
-
-var goPATH = os.Getenv("GOPATH")
-var goROOT = os.Getenv("GOROOT")
-
 // for registry files
-var depRegistry = path.Join(goPATH, "dep")
+var DEP = path.Join(GOPATH, "dep.db")
 
-// for registry files of core libraries
-var depRegistryRoot = path.Join(depPATH, goROOT, "dep")
-
-// TODO: initialize the dependancies for the core libs on the first start
-// and if GOROOT has changed
-
+/*
 func readRegisterFile(dir string, internal bool) (*exports.Package, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
@@ -106,20 +157,12 @@ func writeRegisterFile(dir string, data []byte, internal bool) error {
 	fmt.Printf("writing %s\n", file)
 	return ioutil.WriteFile(file, []byte(chk), 0644)
 }
-
+*/
 func writeDepFile(dir string, data []byte) error {
 	file := path.Join(dir, "dep.json")
 	f, _ := filepath.Abs(file)
 	fmt.Printf("writing %s\n", f)
 	return ioutil.WriteFile(file, data, 0644)
-}
-
-var commands = map[string]*flag.FlagSet{}
-var commandHandles = map[string]func(*flag.FlagSet){}
-
-func addCommand(name string, fn func(*flag.FlagSet)) {
-	commands[name] = flag.NewFlagSet(name, flag.ContinueOnError)
-	commandHandles[name] = fn
 }
 
 func init() {
@@ -136,27 +179,3 @@ func init() {
 	}
 	//Init.Args()
 }
-
-/*
-func main() {
-	flag.Parse()
-	args := flag.Args()
-	//fmt.Println(args)
-	cmd := args[0]
-
-	c, ok := commands[cmd]
-	if !ok {
-		fmt.Println("unkown command " + cmd)
-		flag.Usage()
-		os.Exit(0)
-	}
-
-	c.Parse(args[1:])
-	commandHandles[cmd](c)
-
-	//fmt.Println(args)
-	//fmt.Println(Scan.Arg(0))
-	// fmt.Println(initArgs)
-	//fmt.Println(string(pkgJson(pkg)))
-}
-*/

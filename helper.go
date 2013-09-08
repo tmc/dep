@@ -19,7 +19,7 @@ func getJson(pkg string) string {
 }
 
 func loadJson(pkgPath string) (ø *exports.PackageJSON) {
-	file, _ := filepath.Abs(path.Join(goPATH, "src", pkgPath, "dep.json"))
+	file, _ := filepath.Abs(path.Join(GOPATH, "src", pkgPath, "dep.json"))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err.Error())
