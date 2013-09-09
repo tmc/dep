@@ -73,6 +73,7 @@ func asJson(pkgs ...*exports.Package) (b []byte) {
 	if err != nil {
 		panic(err.Error())
 	}
+	// fmt.Printf("%s\n", b)
 	return
 }
 

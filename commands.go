@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/metakeule/cli"
 	"github.com/metakeule/dep/db"
@@ -40,10 +41,49 @@ func _show(c *cli.Context) ErrorCode {
 	return 0
 }
 
+func _registerPackage(pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps []*db.Exp, dbImps []*db.Imp) {
+	p := &db.Pkg{}
+	p.Package = pkg.Path
+	p.Json = asJson(pkg)
+	pkgMap[pkg.Path] = p
+	dbExps = []*db.Exp{}
+	dbImps = []*db.Imp{}
+
+	for im, _ := range pkg.Imports {
+		if _, has := pkgMap[im]; has {
+			continue
+		}
+		imPkg := exports.Get(im)
+		pExp, pImp := _registerPackage(pkgMap, imPkg)
+		dbExps = append(dbExps, pExp...)
+		dbImps = append(dbImps, pImp...)
+	}
+
+	pkgjs := pkg.PackageJSON()
+
+	for k, v := range pkgjs.Exports {
+		dbE := &db.Exp{}
+		dbE.Package = pkg.Path
+		dbE.Name = k
+		dbE.Value = v
+		dbExps = append(dbExps, dbE)
+	}
+
+	for k, v := range pkgjs.Imports {
+		dbI := &db.Imp{}
+		dbI.Package = pkg.Path
+		arr := strings.Split(k, "#")
+		dbI.Name = arr[1]
+		dbI.Value = v
+		dbI.Import = arr[0]
+		dbImps = append(dbImps, dbI)
+	}
+	return
+}
+
 func _register(c *cli.Context) ErrorCode {
 	parseGlobalFlags(c)
-	//fmt.Println(DEP)
-	//return 0
+	// db.DEBUG = true
 	_, dbFileerr := os.Stat(DEP)
 
 	err := db.Open(DEP)
@@ -63,44 +103,9 @@ func _register(c *cli.Context) ErrorCode {
 	pkgMap := map[string]*db.Pkg{}
 
 	for _, pkg := range pkgs {
-		p := &db.Pkg{}
-		p.Package = pkg.Path
-		p.Json = asJson(pkg)
-		//dbPkgs = append(dbPkgs, p)
-		pkgMap[pkg.Path] = p
-
-		// TODO make a recursiv function to track the exports
-		// and imports from the imports and their imports too
-		for im, _ := range pkg.Imports {
-			// fmt.Printf(im)
-			if _, has := pkgMap[im]; !has {
-				continue
-			}
-
-			imPkg := exports.Get(im)
-			ip := &db.Pkg{}
-			ip.Package = imPkg.Path
-			ip.Json = asJson(imPkg)
-			pkgMap[imPkg.Path] = ip
-		}
-
-		for k, v := range pkg.Exports {
-			dbE := &db.Exp{}
-			dbE.Package = pkg.Path
-			dbE.Name = k
-			dbE.Value = v.String()
-			dbExps = append(dbExps, dbE)
-		}
-
-		for k, v := range pkg.ExternalExports {
-			dbI := &db.Imp{}
-			dbI.Package = pkg.Path
-			arr := strings.Split(k, "#")
-			dbI.Name = arr[1]
-			dbI.Value = v.String()
-			dbI.Import = arr[0]
-			dbImps = append(dbImps, dbI)
-		}
+		pExp, pImp := _registerPackage(pkgMap, pkg)
+		dbExps = append(dbExps, pExp...)
+		dbImps = append(dbImps, pImp...)
 	}
 
 	dbPkgs := []*db.Pkg{}
@@ -109,41 +114,14 @@ func _register(c *cli.Context) ErrorCode {
 		dbPkgs = append(dbPkgs, dbPgk)
 	}
 
-	// TODO: check first, which packages are allready registered.
-	// For the ones that are registered, do an update instead
-
-	db.CleanupTables()
-
-	// TODO: make it all in one large transaction
 	err = db.InsertPackages(dbPkgs, dbExps, dbImps)
 	if err != nil {
 		panic(err.Error())
 	}
-	all, _ := db.GetAllPackages()
 
-	for _, pk := range all {
-		fmt.Printf("%s\n-----\n", pk.Json)
+	for _, pk := range dbPkgs {
+		fmt.Println("inserted/replaced: ", pk.Package)
 	}
-
-	imps, _ := db.GetAllImports()
-
-	for _, impp := range imps {
-		fmt.Printf("Package: %s\nImport: %s\nName: %s\nValue: %s\n-----\n", impp.Package, impp.Import, impp.Name, impp.Value)
-	}
-
-	exps, _ := db.GetAllExports()
-
-	for _, expp := range exps {
-		fmt.Printf("Package: %s\nName: %s\nValue: %s\n-----\n", expp.Package, expp.Name, expp.Value)
-	}
-	/*
-		dir := fs.Arg(0)
-		b, internal := scan(dir)
-		err := writeRegisterFile(dir, b, internal)
-		if err != nil {
-			panic(err.Error())
-		}
-	*/
 	return 0
 }
 
@@ -155,8 +133,101 @@ func _install(c *cli.Context) ErrorCode {
 	return 0
 }
 
+type pkgDiff struct {
+	Path    string
+	Exports []string
+	Imports []string
+}
+
+func toJson(i interface{}) []byte {
+	b, err := json.MarshalIndent(i, "", "  ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return b
+}
+
+func mapDiff(_old map[string]string, _new map[string]string) (diff []string) {
+	diff = []string{}
+	var visited = map[string]bool{}
+
+	for k, v := range _old {
+		visited[k] = true
+		vNew, inNew := _new[k]
+		if !inNew {
+			diff = append(diff, "---"+k+": "+v)
+			continue
+		}
+		if v != vNew {
+			diff = append(diff, "---"+k+": "+v)
+			diff = append(diff, "+++"+k+": "+vNew)
+		}
+	}
+
+	for k, v := range _new {
+		if !visited[k] {
+			diff = append(diff, "+++"+k+": "+v)
+		}
+	}
+	return
+}
+
 func _diff(c *cli.Context) ErrorCode {
 	parseGlobalFlags(c)
+	_, dbFileerr := os.Stat(DEP)
+	err := db.Open(DEP)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	if dbFileerr != nil {
+		fmt.Println(dbFileerr)
+		db.CreateTables()
+	}
+
+	pkgs := packages()
+
+	res := []*pkgDiff{}
+
+	for _, pk := range pkgs {
+
+		dbpkg, exps, imps, e := db.GetPackage(pk.Path, true, true)
+		if e != nil {
+			panic(e.Error())
+		}
+
+		js := asJson(pk)
+
+		// TODO: check the hash instead, escp. check the exports and imports hash
+		if string(js) != string(dbpkg.Json) {
+			//__diff(a, b)
+			pkgjs := pk.PackageJSON()
+
+			var oldExports = map[string]string{}
+
+			for _, dbExp := range exps {
+				oldExports[dbExp.Name] = dbExp.Value
+			}
+
+			pDiff := &pkgDiff{}
+			pDiff.Path = pk.Path
+			pDiff.Exports = mapDiff(oldExports, pkgjs.Exports)
+
+			var oldImports = map[string]string{}
+
+			for _, dbImp := range imps {
+				oldImports[dbImp.Import+"#"+dbImp.Name] = dbImp.Value
+			}
+			pDiff.Imports = mapDiff(oldImports, pkgjs.Imports)
+
+			if len(pDiff.Exports) > 0 || len(pDiff.Imports) > 0 {
+				res = append(res, pDiff)
+			}
+		}
+	}
+	if len(res) > 0 {
+		fmt.Printf("%s\n", toJson(res))
+	}
 	return 0
 }
 

@@ -6,7 +6,6 @@ type Pkg struct {
 	Json       []byte
 	ImportsMd5 string
 	ExportsMd5 string
-	MainMd5    string
 	InitMd5    string
 }
 

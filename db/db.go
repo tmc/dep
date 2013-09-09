@@ -11,6 +11,7 @@ import (
 type pqdrv int
 
 var db *sql.DB
+var DEBUG = false
 
 func Close() error {
 	return db.Close()
@@ -24,7 +25,10 @@ func Open(dbfile string) (err error) {
 var drv = &sqlite.SQLiteDriver{}
 
 // fullfill the driver.Driver interface
-func (d pqdrv) Open(name string) (driver.Conn, error) { return drv.Open(name) }
+func (d pqdrv) Open(name string) (driver.Conn, error) {
+	//return drv.Open("file:"+name + "?cache=shared&mode=rwc")
+	return drv.Open("file:" + name)
+}
 
 var lock = make(chan int, 1)
 
@@ -54,7 +58,6 @@ func CreateTables() {
             package         text not null primary key,
             importsmd5      text not null,
             exportsmd5      text not null,
-            mainmd5         text not null,
             initmd5         text not null,
             jsonmd5         text not null,
             json            blob not null
@@ -96,7 +99,9 @@ func init() {
 	DBWrapper = dbwrap.New("depdb", pqdrv(0))
 	DBWrapper.BeforeAll = func(conn driver.Conn, event string, data ...interface{}) {
 		<-lock
-		fmt.Println(data...)
+		if DEBUG {
+			fmt.Println(data...)
+		}
 	}
 
 	DBWrapper.AfterAll = func(conn driver.Conn, event string, data ...interface{}) {

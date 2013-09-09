@@ -22,14 +22,13 @@ func UpdatePackage(p *Pkg, i []*Imp, e []*Exp) (err error) {
         set 
             importsmd5 = ?, 
             exportsmd5 = ?, 
-            mainmd5 = ?, 
             initmd5 = ?, 
             json = ?, 
             jsonmd5 = ?
         where
             package = ?
         `,
-		p.ImportsMd5, p.ExportsMd5, p.MainMd5, p.InitMd5, p.Json, p.JsonMd5, p.Package)
+		p.ImportsMd5, p.ExportsMd5, p.InitMd5, p.Json, p.JsonMd5, p.Package)
 	if err != nil {
 		return
 	}

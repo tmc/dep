@@ -8,15 +8,18 @@ import (
 var dbFile = "/home/benny/Entwicklung/gopath/src/github.com/metakeule/dep/db/packages.db"
 
 func prefill() {
+	db.DEBUG = true
 	var err error
-	err = db.InsertPackages(packages...)
+	err = db.InsertPackages(packages, exports, imports)
 	if err != nil {
 		panic(err.Error())
 	}
-	err = db.InsertImports(imports...)
-	if err != nil {
-		panic(err.Error())
-	}
+	/*
+		err = db.InsertImports(imports...)
+		if err != nil {
+			panic(err.Error())
+		}
+	*/
 }
 
 func run() {
@@ -32,7 +35,7 @@ func run() {
 	}
 	// called before each method call
 
-	// createTables()
+	//db.CreateTables()
 	db.CleanupTables()
 	prefill()
 
@@ -44,13 +47,24 @@ func run() {
 	fmt.Printf("Package: %s\nJson: %s\n", p.Package, p.Json)
 
 	var imps []*db.Imp
-	imps, err = db.GetImported("github.com/metakeule/dep/packages")
+	imps, err = db.GetAllImports()
 	if err != nil {
 		panic(err.Error())
 	}
 
 	for _, im := range imps {
 		fmt.Printf("%#v\n", im)
+
+	}
+
+	var exps []*db.Exp
+	exps, err = db.GetAllExports()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for _, ex := range exps {
+		fmt.Printf("%#v\n", ex)
 
 	}
 
@@ -81,6 +95,19 @@ var imports = []*db.Imp{
 	},
 	{
 		Import:  "github.com/metakeule/dep/packages",
+		Package: "github.com/metakeule/dep",
+		Name:    "PkgPath",
+		Value:   "PkgPath(string)(string)",
+	},
+}
+
+var exports = []*db.Exp{
+	{
+		Package: "github.com/metakeule/dep",
+		Name:    "Get",
+		Value:   "Get(string)(*Package)",
+	},
+	{
 		Package: "github.com/metakeule/dep",
 		Name:    "PkgPath",
 		Value:   "PkgPath(string)(string)",
