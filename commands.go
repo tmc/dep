@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/metakeule/cli"
 	"github.com/metakeule/dep/db"
 	"github.com/metakeule/exports"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 )
@@ -53,7 +56,7 @@ func _registerPackage(pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps [
 		if _, has := pkgMap[im]; has {
 			continue
 		}
-		imPkg := exports.Get(im)
+		imPkg := exports.DefaultEnv.Pkg(im)
 		pExp, pImp := _registerPackage(pkgMap, imPkg)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
@@ -83,7 +86,6 @@ func _registerPackage(pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps [
 
 func _register(c *cli.Context) ErrorCode {
 	parseGlobalFlags(c)
-	// db.DEBUG = true
 	_, dbFileerr := os.Stat(DEP)
 
 	err := db.Open(DEP)
@@ -193,7 +195,7 @@ func _diff(c *cli.Context) ErrorCode {
 
 		dbpkg, exps, imps, e := db.GetPackage(pk.Path, true, true)
 		if e != nil {
-			panic(e.Error())
+			panic("package not registered: " + pk.Path)
 		}
 
 		js := asJson(pk)
@@ -231,8 +233,86 @@ func _diff(c *cli.Context) ErrorCode {
 	return 0
 }
 
+func mkdirTempDir() (tmpGoPath string) {
+	depPath := path.Join(HOME, ".dep")
+	fl, err := os.Stat(depPath)
+	if err != nil {
+		err = os.MkdirAll(depPath, 0755)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+	if !fl.IsDir() {
+		panic(depPath + " is a file. but should be a directory")
+	}
+
+	tmpGoPath, err = ioutil.TempDir(depPath, "gopath_")
+	if err != nil {
+		panic(err.Error())
+	}
+	err = os.Mkdir(path.Join(tmpGoPath, "src"), 0755)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = os.Mkdir(path.Join(tmpGoPath, "bin"), 0755)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = os.Mkdir(path.Join(tmpGoPath, "pkg"), 0755)
+	if err != nil {
+		panic(err.Error())
+	}
+	return
+}
+
+func getToTempPath() {
+
+}
+
+/*
+	TODO
+
+	- make a tempdir in .deb with subdirs pkg, src and bin
+	- set GOPATH to the tempdir and go get the needed package
+	- check for package and all their dependancies, if
+		- their dependant packages would be fine with the new exports
+	- if all is fine, move the missing src entries to the real GOPATH and install the package
+	- if there are some conflicts, show them
+	- remove -r the tempdir
+*/
+
 func _update(c *cli.Context) ErrorCode {
 	parseGlobalFlags(c)
+	tmpDir := mkdirTempDir()
+
+	defer func() {
+		err := os.RemoveAll(tmpDir)
+		if err != nil {
+			panic(err.Error())
+		}
+	}()
+
+	args := []string{"get"}
+	args = append(args, c.Args()...)
+
+	cmd := exec.Command("go", args...)
+	cmd.Env = []string{
+		fmt.Sprintf(`GOPATH='%s'`, tmpDir),
+		fmt.Sprintf(`GOROOT='%s'`, GOROOT),
+		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		panic(stdout.String() + "\n" + stderr.String())
+	}
+
+	// TODO: now check for the package the dependancies
+	// therefor we need a second instance (environment) of the exports
+	// package, but for another gopath
 	return 0
 }
 

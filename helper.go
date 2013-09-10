@@ -11,7 +11,7 @@ import (
 )
 
 func getJson(pkg string) string {
-	b, err := exports.Get(pkg).MarshalJSON()
+	b, err := exports.DefaultEnv.Pkg(pkg).MarshalJSON()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -24,7 +24,7 @@ func loadJson(pkgPath string) (ø *exports.PackageJSON) {
 	if err != nil {
 		panic(err.Error())
 	}
-	ø, err = exports.LoadJson(data)
+	ø, err = exports.DefaultEnv.LoadJson(data)
 	if err != nil {
 		panic(err.Error())
 	}

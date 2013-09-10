@@ -9,8 +9,10 @@ import (
 
 var _ = fmt.Print
 
+var Env = exports.DefaultEnv
+
 func getPkg(path string) string {
-	p := exports.Get(path)
+	p := Env.Pkg(path)
 
 	b, err := json.MarshalIndent(p, "", "   ")
 	if err != nil {

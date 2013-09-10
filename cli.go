@@ -60,7 +60,7 @@ func parseGlobalFlags(c *cli.Context) {
 	*/
 	if p := c.String("p"); p != "" {
 		PACKAGE_PATH = p
-		PACKAGE = exports.Get(PACKAGE_PATH)
+		PACKAGE = exports.DefaultEnv.Pkg(PACKAGE_PATH)
 		PACKAGE_DIR = path.Join(GOPATH, "src", PACKAGE_PATH)
 		return
 	}
@@ -80,8 +80,8 @@ func parseGlobalFlags(c *cli.Context) {
 		}
 
 		PACKAGE_DIR = d
-		PACKAGE_PATH = exports.PkgPath(PACKAGE_DIR)
-		PACKAGE = exports.Get(PACKAGE_PATH)
+		PACKAGE_PATH = exports.DefaultEnv.PkgPath(PACKAGE_DIR)
+		PACKAGE = exports.DefaultEnv.Pkg(PACKAGE_PATH)
 	}
 
 }

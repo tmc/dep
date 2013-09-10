@@ -57,7 +57,7 @@ func packages() (a []*exports.Package) {
 
 	for fp, _ := range prs.packages {
 		//fmt.Println(fp)
-		pkg := exports.Get(fp)
+		pkg := exports.DefaultEnv.Pkg(fp)
 		if pkg.Internal {
 			//fmt.Printf("skipping internal package %#v\n", pkg.Path)
 			continue
@@ -78,7 +78,7 @@ func asJson(pkgs ...*exports.Package) (b []byte) {
 }
 
 func pkgJson(path string) (b []byte, internal bool) {
-	p := exports.Get(path)
+	p := exports.DefaultEnv.Pkg(path)
 	internal = p.Internal
 	var err error
 	b, err = json.MarshalIndent(p, "", "   ")
@@ -94,7 +94,7 @@ func scan(dir string) (b []byte, internal bool) {
 		panic(err.Error())
 	}
 	//fmt.Println(dir)
-	b, internal = pkgJson(exports.PkgPath(dir))
+	b, internal = pkgJson(exports.DefaultEnv.PkgPath(dir))
 	b = append(b, []byte("\n")...)
 	return
 }
