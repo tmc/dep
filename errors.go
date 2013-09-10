@@ -25,6 +25,7 @@ const (
 	DependancyNotInPackageDir
 	DependancyNotInGOPATH
 	DependancyInfosCorrupt
+	UpdateConflict
 )
 
 var (

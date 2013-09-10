@@ -153,7 +153,7 @@ func init() {
 			Flags: append(globalFlags,
 				cli.BoolFlag{"force", "force the update"},
 				cli.BoolFlag{"ignore-init", "ignore changes of the init functions"},
-				cli.BoolFlag{"ignore-main", "ignore changes of the main functions"},
+				//cli.BoolFlag{"ignore-main", "ignore changes of the main functions"},
 				cli.BoolFlag{"diff", "do not install the update, merily show the possible incompatible differences"},
 			),
 			Action: action(_update),

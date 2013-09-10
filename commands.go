@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime"
 	"strings"
 )
 
@@ -84,22 +85,7 @@ func _registerPackage(pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps [
 	return
 }
 
-func _register(c *cli.Context) ErrorCode {
-	parseGlobalFlags(c)
-	_, dbFileerr := os.Stat(DEP)
-
-	err := db.Open(DEP)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
-	if dbFileerr != nil {
-		fmt.Println(dbFileerr)
-		db.CreateTables()
-	}
-
-	pkgs := packages()
-
+func registerPackages(pkgs ...*exports.Package) {
 	dbExps := []*db.Exp{}
 	dbImps := []*db.Imp{}
 	pkgMap := map[string]*db.Pkg{}
@@ -116,14 +102,32 @@ func _register(c *cli.Context) ErrorCode {
 		dbPkgs = append(dbPkgs, dbPgk)
 	}
 
-	err = db.InsertPackages(dbPkgs, dbExps, dbImps)
+	err := db.InsertPackages(dbPkgs, dbExps, dbImps)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	for _, pk := range dbPkgs {
-		fmt.Println("inserted/replaced: ", pk.Package)
+		fmt.Println("registered: ", pk.Package)
 	}
+}
+
+func _register(c *cli.Context) ErrorCode {
+	parseGlobalFlags(c)
+	_, dbFileerr := os.Stat(DEP)
+
+	err := db.Open(DEP)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	if dbFileerr != nil {
+		fmt.Println(dbFileerr)
+		db.CreateTables()
+	}
+
+	pkgs := packages()
+	registerPackages(pkgs...)
 	return 0
 }
 
@@ -265,10 +269,6 @@ func mkdirTempDir() (tmpGoPath string) {
 	return
 }
 
-func getToTempPath() {
-
-}
-
 /*
 	TODO
 
@@ -281,6 +281,25 @@ func getToTempPath() {
 	- remove -r the tempdir
 */
 
+func hasConflict(p *exports.Package) (errors map[string]error) {
+	pkg := p.PackageJSON()
+	imp, err := db.GetImported(pkg.Path)
+	if err != nil {
+		panic(err.Error())
+	}
+	errors = map[string]error{}
+
+	for _, im := range imp {
+		if val, exists := pkg.Exports[im.Name]; exists {
+			if val != im.Value {
+				errors[im.Name] = fmt.Errorf("%s will change as required from %s (was %s, would be %s", im.Name, im.Package, im.Value, val)
+			}
+		}
+		errors[im.Name] = fmt.Errorf("%s will be missing, required by %s", im.Name, im.Package)
+	}
+	return
+}
+
 func _update(c *cli.Context) ErrorCode {
 	parseGlobalFlags(c)
 	tmpDir := mkdirTempDir()
@@ -292,27 +311,81 @@ func _update(c *cli.Context) ErrorCode {
 		}
 	}()
 
-	args := []string{"get"}
-	args = append(args, c.Args()...)
+	pkgs := packages()
+	env := exports.NewEnv(runtime.GOROOT(), tmpDir)
 
-	cmd := exec.Command("go", args...)
-	cmd.Env = []string{
-		fmt.Sprintf(`GOPATH='%s'`, tmpDir),
-		fmt.Sprintf(`GOROOT='%s'`, GOROOT),
-		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
-	}
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
-	err := cmd.Run()
+	_, dbFileerr := os.Stat(DEP)
+	err := db.Open(DEP)
 	if err != nil {
-		panic(stdout.String() + "\n" + stderr.String())
+		panic(err.Error())
+	}
+	defer db.Close()
+	if dbFileerr != nil {
+		fmt.Println(dbFileerr)
+		db.CreateTables()
+	}
+
+	conflicts := map[string]map[string]error{}
+	// TODO: check if the package and its dependancies are installed in the
+	// default path, if so, check, they are registered / updated in the database.
+	// if not, register /update them
+	// TODO make a db connection to get the conflicting
+	// packages.
+	// it might be necessary to make an update of the db infos first
+	for _, pkg := range pkgs {
+		args := []string{"get", pkg.Path}
+		//args = append(args, c.Args()...)
+
+		cmd := exec.Command("go", args...)
+		cmd.Env = []string{
+			fmt.Sprintf(`GOPATH='%s'`, tmpDir),
+			fmt.Sprintf(`GOROOT='%s'`, GOROOT),
+			fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+		}
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		cmd.Stdout = &stdout
+		err := cmd.Run()
+		if err != nil {
+			panic(stdout.String() + "\n" + stderr.String())
+		}
+
+		tempPkg := env.Pkg(pkg.Path)
+
+		/*
+			TODO: check for package and each dependancy,
+			if there are depending packages in the default environment
+			that do conflict with the exports of the package
+		*/
+		oldPkg := exports.DefaultEnv.Pkg(pkg.Path)
+		if oldPkg == nil {
+			panic(fmt.Sprintf("%s is not installed", pkg.Path))
+		}
+		registerPackages(oldPkg)
+
+		// TODO update entries in DB
+
+		errs := hasConflict(tempPkg)
+
+		if len(errs) > 0 {
+			conflicts[pkg.Path] = errs
+		}
+	}
+
+	if len(conflicts) > 0 {
+		b, e := json.Marshal(conflicts)
+		if e != nil {
+			panic(e.Error())
+		}
+		fmt.Printf("%s\n", b)
+		return UpdateConflict
 	}
 
 	// TODO: now check for the package the dependancies
 	// therefor we need a second instance (environment) of the exports
 	// package, but for another gopath
+
 	return 0
 }
 
