@@ -6,7 +6,7 @@ import (
 	i "io"
 )
 
-var A = p.VarSval
+var Y = p.VarSval
 var B = fmt.Print
 
 type C struct{}
@@ -17,6 +17,10 @@ func P(i.Reader) {
 
 }
 
+var XX = p.X
+
+var QQ = p.Q
+
 func Q(*p.TypeStruct) {
 
 }
@@ -26,3 +30,7 @@ func u(i.ByteWriter) (shown int) {
 }
 
 var CC = &C{}
+
+func DoSomething() {
+	_ = X.String()
+}

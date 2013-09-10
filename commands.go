@@ -281,23 +281,52 @@ func mkdirTempDir() (tmpGoPath string) {
 	- remove -r the tempdir
 */
 
-func hasConflict(p *exports.Package) (errors map[string]error) {
+// TODO: add verbose flag for verbose output
+func hasConflict(p *exports.Package) (errors map[string][3]string) {
 	pkg := p.PackageJSON()
 	imp, err := db.GetImported(pkg.Path)
 	if err != nil {
 		panic(err.Error())
 	}
-	errors = map[string]error{}
+
+	errors = map[string][3]string{}
 
 	for _, im := range imp {
+		key := fmt.Sprintf("%s: %s", im.Package, im.Name)
+
 		if val, exists := pkg.Exports[im.Name]; exists {
 			if val != im.Value {
-				errors[im.Name] = fmt.Errorf("%s will change as required from %s (was %s, would be %s", im.Name, im.Package, im.Value, val)
+				errors[key] = [3]string{"changed", im.Value, val} //fmt.Sprintf("%s will change as required from %s (was %s, would be %s)", im.Name, im.Package, im.Value, val)
 			}
+			continue
 		}
-		errors[im.Name] = fmt.Errorf("%s will be missing, required by %s", im.Name, im.Package)
+		errors[key] = [3]string{"removed", im.Value, ""} // fmt.Sprintf("%s would be missing, required by %s", im.Name, im.Package)
 	}
 	return
+}
+
+func checkConflicts(tempEnv *exports.Environment, pkg *exports.Package) (errs map[string][3]string) {
+	tempPkg := tempEnv.Pkg(pkg.Path)
+	if !exports.DefaultEnv.PkgExists(pkg.Path) {
+		panic(fmt.Sprintf("package %s is not installed"))
+	}
+
+	registerPackages(pkg)
+	errs = hasConflict(tempPkg)
+	return
+}
+
+func runGoTest(tmpDir string, dir string) ([]byte, error) {
+	//args := []string{"get", pkg.Path}
+	//cmd := exec.Command("go", args...)
+	cmd := exec.Command("go", "test")
+	cmd.Env = []string{
+		fmt.Sprintf(`GOPATH=%s`, tmpDir),
+		fmt.Sprintf(`GOROOT=%s`, GOROOT),
+		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+	}
+	cmd.Dir = dir
+	return cmd.CombinedOutput()
 }
 
 func _update(c *cli.Context) ErrorCode {
@@ -305,14 +334,16 @@ func _update(c *cli.Context) ErrorCode {
 	tmpDir := mkdirTempDir()
 
 	defer func() {
-		err := os.RemoveAll(tmpDir)
-		if err != nil {
-			panic(err.Error())
+		if !c.Bool("keep-temp-gopath") {
+			err := os.RemoveAll(tmpDir)
+			if err != nil {
+				panic(err.Error())
+			}
 		}
 	}()
 
 	pkgs := packages()
-	env := exports.NewEnv(runtime.GOROOT(), tmpDir)
+	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
 
 	_, dbFileerr := os.Stat(DEP)
 	err := db.Open(DEP)
@@ -325,56 +356,71 @@ func _update(c *cli.Context) ErrorCode {
 		db.CreateTables()
 	}
 
-	conflicts := map[string]map[string]error{}
+	conflicts := map[string]map[string][3]string{}
+
 	// TODO: check if the package and its dependancies are installed in the
 	// default path, if so, check, they are registered / updated in the database.
 	// if not, register /update them
 	// TODO make a db connection to get the conflicting
 	// packages.
 	// it might be necessary to make an update of the db infos first
+	visited := map[string]bool{}
+
 	for _, pkg := range pkgs {
-		args := []string{"get", pkg.Path}
-		//args = append(args, c.Args()...)
+		if !visited[pkg.Path] {
+			visited[pkg.Path] = true
+			args := []string{"get", pkg.Path}
+			//args = append(args, c.Args()...)
 
-		cmd := exec.Command("go", args...)
-		cmd.Env = []string{
-			fmt.Sprintf(`GOPATH='%s'`, tmpDir),
-			fmt.Sprintf(`GOROOT='%s'`, GOROOT),
-			fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+			cmd := exec.Command("go", args...)
+			cmd.Env = []string{
+				fmt.Sprintf(`GOPATH=%s`, tmpDir),
+				fmt.Sprintf(`GOROOT=%s`, GOROOT),
+				fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+			}
+
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			cmd.Stdout = &stdout
+			err := cmd.Run()
+			if err != nil {
+				panic(stdout.String() + "\n" + stderr.String())
+			}
+			// make flag with --skip-gotest
+			tempPkgPath := path.Join(tempEnv.GOPATH, "src", pkg.Path)
+			// go test should fail, if the newly installed packages are not compatible
+			res, e := runGoTest(tmpDir, tempPkgPath)
+			if e != nil {
+				panic("Error while running 'go test " + tempPkgPath + "'\n" + string(res) + "\n" + e.Error())
+			}
+
+			errs := checkConflicts(tempEnv, pkg)
+			if len(errs) > 0 {
+				conflicts[pkg.Path] = errs
+			}
 		}
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stderr = &stderr
-		cmd.Stdout = &stdout
-		err := cmd.Run()
-		if err != nil {
-			panic(stdout.String() + "\n" + stderr.String())
-		}
 
-		tempPkg := env.Pkg(pkg.Path)
+		for im, _ := range pkg.Imports {
+			if !visited[pkg.Path] {
+				imPkg := exports.DefaultEnv.Pkg(im)
+				tempPkgPath := path.Join(tempEnv.GOPATH, "src", im)
+				// go test should fail, if the newly installed packages are not compatible
+				res, e := runGoTest(tmpDir, tempPkgPath)
+				if e != nil {
+					panic("Error while running 'go test " + tempPkgPath + "'\n" + string(res) + "\n" + e.Error())
+				}
 
-		/*
-			TODO: check for package and each dependancy,
-			if there are depending packages in the default environment
-			that do conflict with the exports of the package
-		*/
-		oldPkg := exports.DefaultEnv.Pkg(pkg.Path)
-		if oldPkg == nil {
-			panic(fmt.Sprintf("%s is not installed", pkg.Path))
-		}
-		registerPackages(oldPkg)
-
-		// TODO update entries in DB
-
-		errs := hasConflict(tempPkg)
-
-		if len(errs) > 0 {
-			conflicts[pkg.Path] = errs
+				errs := checkConflicts(tempEnv, imPkg)
+				if len(errs) > 0 {
+					conflicts[pkg.Path] = errs
+				}
+			}
 		}
 	}
 
 	if len(conflicts) > 0 {
-		b, e := json.Marshal(conflicts)
+		b, e := json.MarshalIndent(conflicts, "", "  ")
 		if e != nil {
 			panic(e.Error())
 		}
@@ -383,8 +429,6 @@ func _update(c *cli.Context) ErrorCode {
 	}
 
 	// TODO: now check for the package the dependancies
-	// therefor we need a second instance (environment) of the exports
-	// package, but for another gopath
 
 	return 0
 }

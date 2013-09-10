@@ -66,6 +66,7 @@ var ErrorCodeInfos = map[ErrorCode]string{
 	DependancyNotInPackageDir: fmt.Sprintf("dep files not in package %s", PACKAGE_PATH),
 	DependancyNotInGOPATH:     fmt.Sprintf("dep files not in $GOPATH/dep directory %s", path.Join(GOPATH, "dep")),
 	DependancyInfosCorrupt:    fmt.Sprintf("dep infos are corrupt for package  %s", PACKAGE_PATH),
+	UpdateConflict:            "update conflict",
 }
 
 func (ø ErrorCode) String() string {

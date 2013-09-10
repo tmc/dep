@@ -10,9 +10,10 @@ var VarS string
 var Z = &TypeStruct{A: "hu"}
 
 var k = "ho"
+var Q = "hohu"
 
 var (
-	X int = 3
+	X float32 = 3.4
 )
 
 type Int int
