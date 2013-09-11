@@ -165,6 +165,7 @@ func init() {
 			Flags: append(globalFlags,
 				cli.StringFlag{"file", "dep-rev.json", "the file to which the definitions of the revisions is written. may be used as input for 'dep checkout'"},
 				cli.BoolFlag{"stdout", "write the revisions to stdout"},
+				cli.BoolFlag{"include-indirect", "include indirect dependancies (e.g. depencancies of dependancies"},
 			),
 			Description: furtherInformation,
 			Action:      action(_revisions),

@@ -1,5 +1,26 @@
 # Concept
 
+- make exported methods part of type and make a fake for returned unexported types with exported methods/fields
+
+// vielleich ignorieren - geht ja eigentlich nur um kompatibilität
+- bei den revisions immer auch die revisions der imports der importierten packages mit erfassen (recursiv) dabei mit Via angabe erfassen, wie die weitere abhängigkeit zustandekam
+hierbei gibt es ein problem: die via abhängigkeiten sind zufällig,
+außer, wenn im repo auch eine revision datei liegt
+// via angabe optional 
+
+// Problem: packages, die nur für die Seiteneffekte importiert werden,
+müssen auch in die Imported mit key init. im grund muss für jedes packet
+das importiert wird, bei den Imported ein eintrag mit init. dort kommt bei <= 3 zeilen der inhalt der init rein (mit Semikolon am Ende), ansonsten eine prüfsumme (ohne Semikolon)
+
+- wir haben das problem, dass packages ni unterverzeichnissen
+von repositories liegen können und beim ändern eines checkouts alle
+packages auf einmal geändert werden. also müssen wir irgendwie damit umgehen, z.b. das die aktuelle revision gemerkt wird, dann geändert wird und dann alle packete mit abhängigkeiten nochmals geprüft werden
+
+    - dafür brauchen wir folgende funktionen
+        - repoDir(package)
+        - inRepo(repodir, package)
+        - packages(repodir)(packages)
+
 ## deb Tool
 
 ### shared functions:

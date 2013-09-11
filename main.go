@@ -2,9 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/metakeule/exports"
+	_ "github.com/metakeule/goh4"
 	"go/build"
+	"io"
+	"strings"
 	//	"io"
 	// "go/parser"
 	// "go/token"
@@ -36,6 +40,53 @@ func (ø *allPkgParser) Walker(path string, info os.FileInfo, err error) error {
 	}
 	return nil
 }
+
+/* stolen from go1.1/src/cmd/go/main.go */
+
+// envForDir returns a copy of the environment
+// suitable for running in the given directory.
+// The environment is the current process's environment
+// but with an updated $PWD, so that an os.Getwd in the
+// child will be faster.
+func envForDir(dir string) []string {
+	env := os.Environ()
+	// Internally we only use rooted paths, so dir is rooted.
+	// Even if dir is not rooted, no harm done.
+	return mergeEnvLists([]string{"PWD=" + dir}, env)
+}
+
+// mergeEnvLists merges the two environment lists such that
+// variables with the same name in "in" replace those in "out".
+func mergeEnvLists(in, out []string) []string {
+NextVar:
+	for _, inkv := range in {
+		k := strings.SplitAfterN(inkv, "=", 2)[0]
+		for i, outkv := range out {
+			if strings.HasPrefix(outkv, k) {
+				out[i] = inkv
+				continue NextVar
+			}
+		}
+		out = append(out, inkv)
+	}
+	return out
+}
+
+var errHTTP = errors.New("no http in bootstrap go command")
+
+func httpGET(url string) ([]byte, error) {
+	return nil, errHTTP
+}
+
+func httpsOrHTTP(importPath string) (string, io.ReadCloser, error) {
+	return "", nil, errHTTP
+}
+
+func parseMetaGoImports(r io.Reader) (imports []metaImport) {
+	panic("unreachable")
+}
+
+/* End Of stolen from go1.1/src/cmd/go/main.go */
 
 func packages() (a []*exports.Package) {
 	a = []*exports.Package{}

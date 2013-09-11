@@ -2,15 +2,18 @@ package main
 
 import (
 	"bytes"
+	_ "code.google.com/p/go.exp/inotify"
 	"encoding/json"
 	"fmt"
 	"github.com/metakeule/cli"
 	"github.com/metakeule/dep/db"
 	"github.com/metakeule/exports"
 	"io/ioutil"
+	_ "launchpad.net/goamz/aws"
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -107,9 +110,11 @@ func registerPackages(pkgs ...*exports.Package) {
 		panic(err.Error())
 	}
 
-	for _, pk := range dbPkgs {
-		fmt.Println("registered: ", pk.Package)
-	}
+	/*
+		for _, pk := range dbPkgs {
+			fmt.Println("registered: ", pk.Package)
+		}
+	*/
 }
 
 func _register(c *cli.Context) ErrorCode {
@@ -329,6 +334,7 @@ func runGoTest(tmpDir string, dir string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+// TODO: checkout certain revisions if there is a dep.rev file
 func _update(c *cli.Context) ErrorCode {
 	parseGlobalFlags(c)
 	tmpDir := mkdirTempDir()
@@ -369,7 +375,7 @@ func _update(c *cli.Context) ErrorCode {
 	for _, pkg := range pkgs {
 		if !visited[pkg.Path] {
 			visited[pkg.Path] = true
-			args := []string{"get", pkg.Path}
+			args := []string{"get", "-u", pkg.Path}
 			//args = append(args, c.Args()...)
 
 			cmd := exec.Command("go", args...)
@@ -428,17 +434,299 @@ func _update(c *cli.Context) ErrorCode {
 		return UpdateConflict
 	}
 
-	// TODO: now check for the package the dependancies
+	// if we got here, everything is fine and we may do our update
 
+	// TODO: it might be better to simply move the installed packages
+	// instead of go getting them again, because they might
+	// have changed in the meantime
+	for _, pkg := range pkgs {
+		// update all dependant packages as well
+		args := []string{"get", "-u", pkg.Path}
+		//args = append(args, c.Args()...)
+
+		cmd := exec.Command("go", args...)
+		cmd.Env = []string{
+			fmt.Sprintf(`GOPATH=%s`, GOPATH),
+			fmt.Sprintf(`GOROOT=%s`, GOROOT),
+			fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+		}
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		cmd.Stdout = &stdout
+		err := cmd.Run()
+		if err != nil {
+			panic(stdout.String() + "\n" + stderr.String())
+		}
+	}
 	return 0
+}
+
+// maps a package path to a tag
+//type tags map[string]string
+
+//var tagFileName = "dep-tags.json"
+
+/*
+	better take tags instead of revisions
+	(for git revisions might be used as well)
+
+	git tags => show all tags
+	bzr tags => show all tags
+	hg tags => show all tags
+	svn branches lying around in repo/tags
+*/
+
+/*
+git rev-parse HEAD
+svn info | grep "Revision" | awk '{print $2}'
+bzr log -r last:1 | grep revno
+//hg tags | grep "tip" | awk '{print $2}'
+//hg log -r tip (erste)
+// better:
+hg tip --template '{node}'
+*/
+
+func getRevCmd(dir string, c string, args ...string) string {
+	cmd := exec.Command(c, args...)
+	cmd.Dir = dir
+	cmd.Env = []string{
+		fmt.Sprintf(`GOPATH=%s`, GOPATH),
+		fmt.Sprintf(`GOROOT=%s`, GOROOT),
+		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		panic(stdout.String() + "\n" + stderr.String())
+	}
+	return strings.Trim(stdout.String(), "\n\r")
+}
+
+func getRevisionGit(dir string) string {
+	return getRevCmd(dir, "git", "rev-parse", "HEAD")
+}
+
+func getRevisionHg(dir string) string {
+	return getRevCmd(dir, "hg", "tip", "--template", "{node}")
+}
+
+var bzrRevRe = regexp.MustCompile(`revision-id:\s*([^\s]+)`)
+
+// maps a package path to a vcs and a revision
+type revision struct {
+	VCM    string
+	Rev    string
+	Parent string
+	Tag    string // TODO check if revision is a tag and put it into the rev
+}
+
+var revFileName = "dep-rev.json"
+
+func getRevisionBzr(dir string) string {
+	res := getRevCmd(dir, "bzr", "log", "-l", "1", "--show-ids")
+	sm := bzrRevRe.FindAllStringSubmatch(res, 1)
+	return sm[0][1]
+}
+
+func pkgRevision(pkgPath string, parent string) (rev revision) {
+	dir := path.Join(exports.DefaultEnv.GOPATH, "src", pkgPath)
+	vcs, root, err := vcsForDir(dir)
+	if err != nil {
+		panic(err.Error())
+	}
+	_ = root
+	var r string
+	switch vcs.cmd {
+	case "git":
+		r = getRevisionGit(dir)
+	case "hg":
+		r = getRevisionHg(dir)
+	case "bzr":
+		r = getRevisionBzr(dir)
+	case "svn":
+		panic("svn is currently not supported")
+	default:
+		panic("unknown vcs command " + vcs.cmd)
+
+	}
+	return revision{vcs.cmd, r, parent, ""}
+}
+
+func indirectRev(revisions map[string]revision, pkg *exports.Package, parent string) {
+	for im, _ := range pkg.Imports {
+		if _, has := revisions[im]; !has {
+			revisions[im] = pkgRevision(im, pkg.Path)
+			indirectRev(revisions, exports.DefaultEnv.Pkg(im), pkg.Path)
+		}
+	}
 }
 
 func _revisions(c *cli.Context) ErrorCode {
 	parseGlobalFlags(c)
+	file := c.String("file")
+	stdout := c.Bool("stdout")
+	inclIndirect := c.Bool("include-indirect")
+	pkgs := packages()
+	allrevisions := map[string]revision{}
+
+	for _, pkg := range pkgs {
+		revisions := map[string]revision{}
+		for im, _ := range pkg.Imports {
+			revisions[im] = pkgRevision(im, pkg.Path)
+			if inclIndirect {
+				indirectRev(revisions, exports.DefaultEnv.Pkg(im), pkg.Path)
+				continue
+			}
+		}
+
+		if stdout {
+			for k, v := range revisions {
+				if _, exists := allrevisions[k]; !exists {
+					allrevisions[k] = v
+				}
+			}
+			continue
+		}
+		data, err := json.MarshalIndent(revisions, "", "  ")
+		if err != nil {
+			panic(err.Error())
+		}
+
+		dir, _ := pkg.Dir()
+		filename := path.Join(dir, file)
+		err = ioutil.WriteFile(filename, data, 0644)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+	if stdout {
+		data, err := json.MarshalIndent(allrevisions, "", "  ")
+		if err != nil {
+			panic(err.Error())
+		}
+		fmt.Printf("%s\n", data)
+	}
 	return 0
 }
 
+func checkoutRevCmd(dir string, c string, args ...string) string {
+	cmd := exec.Command(c, args...)
+	cmd.Dir = dir
+	cmd.Env = []string{
+		fmt.Sprintf(`GOPATH=%s`, GOPATH),
+		fmt.Sprintf(`GOROOT=%s`, GOROOT),
+		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		panic(stdout.String() + "\n" + stderr.String())
+	}
+	return strings.Trim(stdout.String(), "\n\r")
+}
+
+func checkoutBzr(dir string, rev string) error {
+	// update -r {tag}
+	return checkoutRevCmd(dir, "bzr", "update", "-r", rev)
+}
+
+func checkoutGit(dir string, rev string) error {
+	return checkoutRevCmd(dir, "git", "checkout", rev)
+}
+
+func checkoutHg(dir string, rev string) error {
+	// update -r
+	return checkoutRevCmd(dir, "hg", "update", "-r", rev)
+}
+
+func repoRoot(dir string) string {
+	_, root, err := vcsForDir(dir)
+	if err != nil {
+		panic(err.Error())
+	}
+	return root
+}
+
+// looks for revisions in the given file and checks out the
+// packages that are not already installed
+// TODO: we need to check for the repo of a package and control,
+// if the repo is not already checked out
+// same for update
+// TODO ignore packages everywhere that have /example/ or /examples/ in their path same for /test/ and /tests/
 func _checkout(c *cli.Context) ErrorCode {
+	file := c.String("file")
+	force := c.Bool("force")
+
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	revisions := map[string]revision{}
+	err = json.Unmarshal(data, &revisions)
+	if err != nil {
+		panic(err.Error())
+	}
+	//fmt.Printf("%#v\n", revisions)
+	doneRepos := map[string]bool{}
+
+	for pkg, rev := range revisions {
+		exists := exports.DefaultEnv.PkgExists(pkg)
+
+		if force || !exists {
+			dir := path.Join(exports.DefaultEnv.GOPATH, "src", pkg)
+			if !exists {
+				// install package, but only if repo does not exist
+
+			}
+
+			r := repoRoot(dir)
+			if doneRepos[r] {
+				continue
+			}
+			doneRepos[r] = true
+
+			// checkout revision
+			var checkoutErr error
+			switch rev.VCM {
+			case "bzr":
+				checkoutErr = checkoutBzr(r, rev.Rev)
+			case "git":
+				checkoutErr = checkoutGit(r, rev.Rev)
+			case "hg":
+				checkoutErr = checkoutHg(r, rev.Rev)
+			case "svn":
+				panic("unsupported VCM svn for package " + pkg)
+			default:
+				panic("unsupported VCM " + rev.VCM + " for package " + pkg)
+			}
+
+			if checkoutErr != nil {
+				panic("can't checkout " + pkg + " rev " + rev.Rev + ":\n" + checkoutErr.Error())
+			}
+		}
+	}
+
+	// vcsByCmd(cmd)
+	/*
+		vcs, root, err := vcsForDir(p)
+		if err != nil {
+			panic(err.Error())
+		}
+		if err := vcs.tagSync(root, "die version"); err != nil {
+			panic(err.Error())
+		}
+	*/
 	return 0
 }
 
