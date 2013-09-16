@@ -100,7 +100,7 @@ func init() {
 	options = &dep.Options{}
 	options.HOME = os.Getenv("HOME")
 	options.GOPATH = os.Getenv("GOPATH")
-	options.GOROOT = os.Getenv("GOROOT")
+	options.GOROOT = runtime.GOROOT()
 	options.Env = exports.NewEnv(runtime.GOROOT(), options.GOPATH)
 
 	ErrorCodeInfos[dep.GOROOTNotSet] = "$GOROOT environment variable is not set"

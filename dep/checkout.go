@@ -13,6 +13,27 @@ import (
 	"path"
 )
 
+func goget(o *Options, pkg string) {
+	args := []string{"get", pkg}
+	//args = append(args, c.Args()...)
+
+	cmd := exec.Command("go", args...)
+	cmd.Env = []string{
+		fmt.Sprintf(`GOPATH=%s`, o.GOPATH),
+		fmt.Sprintf(`GOROOT=%s`, o.GOROOT),
+		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		panic(stdout.String() + "\n" + stderr.String())
+	}
+}
+
 // looks for revisions in the given file and checks out the
 // packages that are not already installed
 // TODO: we need to check for the repo of a package and control,
