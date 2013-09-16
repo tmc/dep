@@ -307,7 +307,8 @@ func vcsForDir(p string) (vcs *vcsCmd, root string, err error) {
 	for len(dir) > len(srcRoot) {
 		for _, vcs := range vcsList {
 			if fi, err := os.Stat(filepath.Join(dir, "."+vcs.cmd)); err == nil && fi.IsDir() {
-				return vcs, dir[len(srcRoot)+1:], nil
+				//return vcs, dir[len(srcRoot)+1:], nil
+				return vcs, dir, nil
 			}
 		}
 

@@ -9,9 +9,9 @@ import (
 
 func Register(c *cli.Context, o *Options) ErrorCode {
 	//parseGlobalFlags(c)
-	_, dbFileerr := os.Stat(DEP(o))
+	_, dbFileerr := os.Stat(DEP(o.GOPATH))
 
-	dB, err := db.Open(DEP(o))
+	dB, err := db.Open(DEP(o.GOPATH))
 	if err != nil {
 		panic(err.Error())
 	}

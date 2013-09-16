@@ -16,7 +16,7 @@ func Get(c *cli.Context, o *Options) ErrorCode {
 	args := []string{"get"}
 	args = append(args, c.Args()...)
 	installed := []*exports.Package{}
-	dB, err := db.Open(DEP(o))
+	dB, err := db.Open(DEP(o.GOPATH))
 
 	if err != nil {
 		db.CreateTables(dB)

@@ -40,8 +40,8 @@ func mapDiff(_old map[string]string, _new map[string]string) (diff []string) {
 
 func Diff(c *cli.Context, o *Options) ErrorCode {
 	// parseGlobalFlags(c)
-	_, dbFileerr := os.Stat(DEP(o))
-	dB, err := db.Open(DEP(o))
+	_, dbFileerr := os.Stat(DEP(o.GOPATH))
+	dB, err := db.Open(DEP(o.GOPATH))
 	if err != nil {
 		panic(err.Error())
 	}

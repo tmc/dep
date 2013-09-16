@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"time"
 	// "github.com/metakeule/cli"
 	"github.com/metakeule/exports"
 	"os"
@@ -138,7 +139,13 @@ func moveCandidatesToGOPATH(o *Options, tempEnv *exports.Environment, pkgs ...*e
 			continue
 		}
 		visited[r] = true
-		err := os.Rename(r, _repoRoot(path.Join(o.GOPATH, "src", pkg.Path)))
+		target := _repoRoot(path.Join(o.GOPATH, "src", pkg.Path))
+		backup := target + fmt.Sprintf("_backup_of_dep_update_%v", time.Now().UnixNano())
+		err := os.Rename(target, backup)
+		if err != nil {
+			panic("can't make backup: " + backup)
+		}
+		err = os.Rename(r, target)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -146,30 +153,50 @@ func moveCandidatesToGOPATH(o *Options, tempEnv *exports.Environment, pkgs ...*e
 
 }
 
+func checkoutDependanciesByRevFile(o *Options, gopath string, pkg string) error {
+	data, err := ioutil.ReadFile(path.Join(gopath, "src", pkg, revFileName))
+
+	if err != nil {
+		return err
+	}
+
+	revisions := map[string]revision{}
+	err = json.Unmarshal(data, &revisions)
+	if err != nil {
+		return err
+	}
+
+	visited := map[string]bool{}
+
+	for p, rev := range revisions {
+		dir := path.Join(gopath, "src", p)
+		r := _repoRoot(dir)
+		// fmt.Printf("repoROOT is: %#v\n", r)
+		if visited[r] {
+			continue
+		}
+		visited[r] = true
+		// fmt.Printf("checking out: \n\tpkg %v\n\trev: %s\n\n", p, rev.Rev)
+		checkoutRevision(o, r, rev)
+	}
+	return nil
+}
+
 func updatePackage(o *Options, dB *sql.DB, pkg string) {
 	tmpDir := mkdirTempDir(o)
 	goGetPackages(o, tmpDir, pkg)
 	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
-	data, err := ioutil.ReadFile(path.Join(tempEnv.GOPATH, "src", pkg, revFileName))
-	if err == nil {
-		revisions := map[string]revision{}
-		err = json.Unmarshal(data, &revisions)
-		if err != nil {
-			panic(err.Error())
-		}
+	err := checkoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
 
-		visited := map[string]bool{}
-
-		for p, rev := range revisions {
-			dir := path.Join(tempEnv.GOPATH, "src", p)
-			r := _repoRoot(dir)
-			if visited[r] {
-				continue
-			}
-			visited[r] = true
-			checkoutRevision(o, r, rev)
-		}
+	if err != nil {
+		panic(err.Error())
 	}
+
+	err = createDB(tempEnv.GOPATH)
+	if err != nil {
+		panic(err.Error())
+	}
+
 	checkIntegrity(o, tempEnv)
 	conflicts := map[string]map[string][3]string{}
 	candidates := getCandidatesForMovement(o, tempEnv)
@@ -194,14 +221,16 @@ func updatePackage(o *Options, dB *sql.DB, pkg string) {
 
 func allPackages(o *Options, env *exports.Environment) (a []*exports.Package) {
 	a = []*exports.Package{}
-	prs := &allPkgParser{map[string]bool{}}
+	// prs := &allPkgParser{map[string]bool{}}
+	prs := newAllPkgParser(env.GOPATH)
 	err := filepath.Walk(path.Join(env.GOPATH, "src"), prs.Walker)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	for fp, _ := range prs.packages {
-		pkg := o.Env.Pkg(fp)
+		//pkg := o.Env.Pkg(fp)
+		pkg := env.Pkg(fp)
 		if pkg.Internal {
 			continue
 		}

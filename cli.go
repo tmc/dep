@@ -15,6 +15,7 @@ var app = cli.NewApp()
 
 func action(fn func(*cli.Context, *dep.Options) dep.ErrorCode) func(c *cli.Context) {
 	return func(c *cli.Context) {
+		parseGlobalFlags(c)
 		// panics are handled in main
 		errCode := fn(c, options)
 		if errCode > 0 {
@@ -121,7 +122,6 @@ func init() {
 	app.Usage = "manage go package dependancies via imports and exports"
 	app.Version = "0.0.1"
 	app.Action = func(c *cli.Context) {
-		parseGlobalFlags(c)
 		if c.Args()[0] == "intro" {
 			fmt.Println(`here is an introduction into dep`)
 		}

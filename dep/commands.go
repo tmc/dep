@@ -94,6 +94,20 @@ func _registerPackage(o *Options, pkgMap map[string]*db.Pkg, pkg *exports.Packag
 	return
 }
 
+func createDB(gopath string) error {
+	_, dbFileerr := os.Stat(DEP(gopath))
+	dB, err := db.Open(DEP(gopath))
+	if err != nil {
+		return err
+	}
+	defer dB.Close()
+	if dbFileerr != nil {
+		//fmt.Println(dbFileerr)
+		db.CreateTables(dB)
+	}
+	return nil
+}
+
 func registerPackages(o *Options, dB *sql.DB, pkgs ...*exports.Package) {
 	dbExps := []*db.Exp{}
 	dbImps := []*db.Imp{}
@@ -139,6 +153,10 @@ func mkdirTempDir(o *Options) (tmpGoPath string) {
 		if err != nil {
 			panic(err.Error())
 		}
+		fl, err = os.Stat(depPath)
+	}
+	if err != nil {
+		panic(err.Error())
 	}
 	if !fl.IsDir() {
 		panic(depPath + " is a file. but should be a directory")
@@ -323,6 +341,7 @@ func indirectRev(o *Options, revisions map[string]revision, pkg *exports.Package
 }
 
 func checkoutRevCmd(o *Options, dir string, c string, args ...string) error {
+	//fmt.Printf("running:\n\t%s %s\n in\n\t%#v\n", c, strings.Join(args, " "), dir)
 	cmd := exec.Command(c, args...)
 	cmd.Dir = dir
 	cmd.Env = []string{
@@ -337,7 +356,8 @@ func checkoutRevCmd(o *Options, dir string, c string, args ...string) error {
 	cmd.Stdout = &stdout
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("%s", stderr)
+		//return fmt.Errorf("checkoutRevCmd Error %s", stderr.String())
+		return fmt.Errorf("%s", stderr.String())
 	}
 	return nil
 }
@@ -358,6 +378,7 @@ func checkoutHg(o *Options, dir string, rev string) error {
 
 func _repoRoot(dir string) string {
 	_, root, err := vcsForDir(dir)
+	// fmt.Printf("root by vcsForDir is: %#v\n", root)
 	if err != nil {
 		panic(err.Error())
 	}

@@ -32,8 +32,8 @@ func Update(c *cli.Context, o *Options) ErrorCode {
 	pkgs := packages(o)
 	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
 
-	_, dbFileerr := os.Stat(DEP(o))
-	dB, err := db.Open(DEP(o))
+	_, dbFileerr := os.Stat(DEP(o.GOPATH))
+	dB, err := db.Open(DEP(o.GOPATH))
 	if err != nil {
 		panic(err.Error())
 	}

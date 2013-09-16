@@ -9,4 +9,4 @@ import (
 	// "path"
 )
 
-var ErrorCodeInfos map[dep.ErrorCode]string
+var ErrorCodeInfos = map[dep.ErrorCode]string{}

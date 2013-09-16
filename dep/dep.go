@@ -26,16 +26,47 @@ Default
 
 var _ = fmt.Print
 
+func makeBuildContext(gopath string) build.Context {
+	ctx := build.Context{}
+	ctx.GOARCH = build.Default.GOARCH
+	ctx.GOOS = build.Default.GOOS
+	ctx.GOROOT = build.Default.GOROOT
+	ctx.GOPATH = gopath
+	ctx.CgoEnabled = build.Default.CgoEnabled
+	ctx.UseAllFiles = build.Default.UseAllFiles
+	ctx.Compiler = build.Default.Compiler
+	ctx.BuildTags = build.Default.BuildTags
+	ctx.ReleaseTags = build.Default.ReleaseTags
+	ctx.InstallSuffix = build.Default.InstallSuffix
+	ctx.JoinPath = build.Default.JoinPath
+	ctx.SplitPathList = build.Default.SplitPathList
+	ctx.IsAbsPath = build.Default.IsAbsPath
+	ctx.IsDir = build.Default.IsDir
+	ctx.HasSubdir = build.Default.HasSubdir
+	ctx.ReadDir = build.Default.ReadDir
+	ctx.OpenFile = build.Default.OpenFile
+	return ctx
+}
+
 type allPkgParser struct {
 	packages map[string]bool
+	context  build.Context
+}
+
+func newAllPkgParser(gopath string) *allPkgParser {
+	return &allPkgParser{
+		packages: map[string]bool{},
+		context:  makeBuildContext(gopath),
+	}
 }
 
 func (ø *allPkgParser) Walker(path string, info os.FileInfo, err error) error {
+
 	if err != nil {
 		return err
 	}
 	if info.IsDir() {
-		pkg, err := build.Default.ImportDir(path, build.ImportMode(0))
+		pkg, err := ø.context.ImportDir(path, build.ImportMode(0))
 		if err == nil && pkg != nil {
 			ø.packages[pkg.ImportPath] = true
 		}
@@ -92,7 +123,8 @@ func parseMetaGoImports(r io.Reader) (imports []metaImport) {
 
 func packages(o *Options) (a []*exports.Package) {
 	a = []*exports.Package{}
-	prs := &allPkgParser{map[string]bool{}}
+	//prs := &allPkgParser{map[string]bool{}}
+	prs := newAllPkgParser(o.GOPATH)
 
 	if !o.Recursive {
 		if o.Package.Internal {
@@ -155,8 +187,8 @@ func scan(o *Options, dir string) (b []byte, internal bool) {
 // for registry files
 //var DEP = path.Join(GOPATH, "dep.db")
 
-func DEP(o *Options) string {
-	return path.Join(o.GOPATH, DEP_DB)
+func DEP(gopath string) string {
+	return path.Join(gopath, DEP_DB)
 }
 
 var DEP_DB = "dep.db"
