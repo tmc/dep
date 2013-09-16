@@ -1,4 +1,4 @@
-package main
+package dep
 
 import (
 	"bytes"
@@ -10,21 +10,21 @@ import (
 	"path"
 )
 
-func getJson(pkg string) string {
-	b, err := exports.DefaultEnv.Pkg(pkg).MarshalJSON()
+func getJson(o *Options, pkg string) string {
+	b, err := o.Env.Pkg(pkg).MarshalJSON()
 	if err != nil {
 		panic(err.Error())
 	}
 	return string(b)
 }
 
-func loadJson(pkgPath string) (ø *exports.PackageJSON) {
-	file, _ := filepath.Abs(path.Join(GOPATH, "src", pkgPath, "dep.json"))
+func loadJson(pkgPath string, o *Options) (ø *exports.PackageJSON) {
+	file, _ := filepath.Abs(path.Join(o.GOPATH, "src", pkgPath, "dep.json"))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err.Error())
 	}
-	ø, err = exports.DefaultEnv.LoadJson(data)
+	ø, err = o.Env.LoadJson(data)
 	if err != nil {
 		panic(err.Error())
 	}

@@ -4,7 +4,7 @@
 
 // copy of go1.1/src/cmd/go/vcs.go
 
-package main
+package dep
 
 import (
 	"bytes"

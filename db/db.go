@@ -10,16 +10,11 @@ import (
 
 type pqdrv int
 
-var db *sql.DB
+//var db *sql.DB
 var DEBUG = false
 
-func Close() error {
-	return db.Close()
-}
-
-func Open(dbfile string) (err error) {
-	db, err = sql.Open("depdb", dbfile)
-	return
+func Open(dbfile string) (db *sql.DB, err error) {
+	return sql.Open("depdb", dbfile)
 }
 
 var drv = &sqlite.SQLiteDriver{}
@@ -32,7 +27,7 @@ func (d pqdrv) Open(name string) (driver.Conn, error) {
 
 var lock = make(chan int, 1)
 
-func CleanupTables() {
+func CleanupTables(db *sql.DB) {
 	var err error
 	sqls := []string{
 		`delete from packages`,
@@ -49,7 +44,7 @@ func CleanupTables() {
 	}
 }
 
-func CreateTables() {
+func CreateTables(db *sql.DB) {
 	var err error
 	sqls := []string{
 		"create table foo (id integer not null primary key, name text)",
