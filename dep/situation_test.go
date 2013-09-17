@@ -10,7 +10,7 @@ import (
 )
 
 var opt = &Options{}
-var pkgRevAfter = "ad888e7dac22dd16a7539c49c34af71c1304f44e"
+var pkgRevAfter = "a85b1db977f9bf5335b0ce99b99935e18c130de6"
 var depRevBefore = "4976ff78ef93be4c04774ba18bffdbf2a96c5cc0"
 var depRevAfter = "54daa3277ea0a5980b104a80679fffdb1a195d90"
 
@@ -61,46 +61,51 @@ func TestCompatible(t *testing.T) {
 
 	err := _getWithDeps(opt, pkg, pkgRevBefore)
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	// check, if revisions are correct
 
 	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)) != pkgRevBefore {
-		t.Errorf("revision %#v not checked out for package %#v\n", pkgRevBefore, pkg)
+		t.Fatalf("revision %#v not checked out for package %#v\n", pkgRevBefore, pkg)
 	}
 
 	depPkg := "github.com/metakeule/deptest_mod_a/compatible"
 
 	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", depPkg)) != depRevBefore {
-		t.Errorf("revision %#v not checked out for package %#v\n", depRevBefore, depPkg)
+		t.Fatalf("revision %#v not checked out for package %#v\n", depRevBefore, depPkg)
 	}
 
 	err = createDB(opt.GOPATH)
 
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	checkIntegrity(opt, opt.Env)
 
 	dB, err := db.Open(DEP(opt.GOPATH))
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer dB.Close()
 	// updatePackage(o, dB, pkg)
-	updatePackage(opt, dB, pkg)
-
-	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)) != pkgRevAfter {
-		t.Errorf("revision after update %#v not matching package %#v\n", pkgRevAfter, pkg)
+	err = updatePackage(opt, dB, pkg)
+	if err != nil {
+		t.Error(err.Error())
 	}
 
-	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", depPkg)) != depRevAfter {
-		t.Errorf("revision after update %#v not matching for dependancy package %#v\n", depRevAfter, depPkg)
+	if r := getRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)); r != pkgRevAfter {
+		t.Errorf("revision after update %#v not matching expected: %#v in package %#v\n", r, pkgRevAfter, pkg)
 	}
+
+	if r := getRevisionGit(opt, path.Join(opt.GOPATH, "src", depPkg)); r != depRevAfter {
+		t.Errorf("revision after update %#v not matching expected: %#v for dependancy package %#v\n", r, depRevAfter, depPkg)
+	}
+
 }
 
+// test change where the only a not used part changes in a compatible way
 func TestCompatiblePartialChange(t *testing.T) {
 	prepare()
 	pkg := "github.com/metakeule/deptest_situation/working/partial_change"
@@ -108,42 +113,88 @@ func TestCompatiblePartialChange(t *testing.T) {
 
 	err := _getWithDeps(opt, pkg, pkgRevBefore)
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatalf(err.Error())
 	}
 
 	// check, if revisions are correct
 
 	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)) != pkgRevBefore {
-		t.Errorf("revision %#v not checked out for package %#v\n", pkgRevBefore, pkg)
+		t.Fatalf("revision %#v not checked out for package %#v\n", pkgRevBefore, pkg)
 	}
 
 	depPkg := "github.com/metakeule/deptest_mod_a/partial_broken"
 
 	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", depPkg)) != depRevBefore {
-		t.Errorf("revision %#v not checked out for package %#v\n", depRevBefore, depPkg)
+		t.Fatalf("revision %#v not checked out for package %#v\n", depRevBefore, depPkg)
 	}
 
 	err = createDB(opt.GOPATH)
 
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	checkIntegrity(opt, opt.Env)
 
 	dB, err := db.Open(DEP(opt.GOPATH))
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal(err.Error())
 	}
 	defer dB.Close()
 	// updatePackage(o, dB, pkg)
-	updatePackage(opt, dB, pkg)
+	err = updatePackage(opt, dB, pkg)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	/*
+		if getRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)) != pkgRevAfter {
+			t.Errorf("revision after update %#v not matching package %#v\n", pkgRevAfter, pkg)
+		}
 
-	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)) != pkgRevAfter {
-		t.Errorf("revision after update %#v not matching package %#v\n", pkgRevAfter, pkg)
+		if getRevisionGit(opt, path.Join(opt.GOPATH, "src", depPkg)) != depRevAfter {
+			t.Errorf("revision after update %#v not matching for dependancy package %#v\n", depRevAfter, depPkg)
+		}
+	*/
+}
+
+func TestInCompatible(t *testing.T) {
+	prepare()
+	pkg := "github.com/metakeule/deptest_situation/failing/incompatible_change"
+	pkgRevBefore := "d1c7c9a17887cefb8892c8edeafab927da8ce5e8"
+
+	err := _getWithDeps(opt, pkg, pkgRevBefore)
+	if err != nil {
+		t.Fatalf(err.Error())
 	}
 
-	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", depPkg)) != depRevAfter {
-		t.Errorf("revision after update %#v not matching for dependancy package %#v\n", depRevAfter, depPkg)
+	// check, if revisions are correct
+
+	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)) != pkgRevBefore {
+		t.Fatalf("revision %#v not checked out for package %#v\n", pkgRevBefore, pkg)
+	}
+
+	depPkg := "github.com/metakeule/deptest_mod_a/broken"
+
+	if getRevisionGit(opt, path.Join(opt.GOPATH, "src", depPkg)) != depRevBefore {
+		t.Fatalf("revision %#v not checked out for package %#v\n", depRevBefore, depPkg)
+	}
+
+	err = createDB(opt.GOPATH)
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	checkIntegrity(opt, opt.Env)
+
+	dB, err := db.Open(DEP(opt.GOPATH))
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	defer dB.Close()
+	// updatePackage(o, dB, pkg)
+	err = updatePackage(opt, dB, pkg)
+	if err == nil {
+		t.Errorf("update of a package that depends on a package that broke compatibilities should raise an error but does not")
 	}
 }

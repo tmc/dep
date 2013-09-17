@@ -129,7 +129,7 @@ func getCandidatesForMovement(o *Options, tempEnv *exports.Environment) (pkgs []
 	return
 }
 
-func moveCandidatesToGOPATH(o *Options, tempEnv *exports.Environment, pkgs ...*exports.Package) {
+func moveCandidatesToGOPATH(o *Options, tempEnv *exports.Environment, pkgs ...*exports.Package) (err error) {
 	visited := map[string]bool{}
 
 	for _, pkg := range pkgs {
@@ -141,16 +141,18 @@ func moveCandidatesToGOPATH(o *Options, tempEnv *exports.Environment, pkgs ...*e
 		visited[r] = true
 		target := _repoRoot(path.Join(o.GOPATH, "src", pkg.Path))
 		backup := target + fmt.Sprintf("_backup_of_dep_update_%v", time.Now().UnixNano())
-		err := os.Rename(target, backup)
+		err = os.Rename(target, backup)
 		if err != nil {
-			panic("can't make backup: " + backup)
+			return
+			//panic("can't make backup: " + backup)
 		}
 		err = os.Rename(r, target)
 		if err != nil {
-			panic(err.Error())
+			return
+			//panic(err.Error())
 		}
 	}
-
+	return
 }
 
 func checkoutDependanciesByRevFile(o *Options, gopath string, pkg string) error {
@@ -182,19 +184,19 @@ func checkoutDependanciesByRevFile(o *Options, gopath string, pkg string) error 
 	return nil
 }
 
-func updatePackage(o *Options, dB *sql.DB, pkg string) {
+func updatePackage(o *Options, dB *sql.DB, pkg string) (err error) {
 	tmpDir := mkdirTempDir(o)
 	goGetPackages(o, tmpDir, pkg)
 	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
-	err := checkoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
+	err = checkoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
 
 	if err != nil {
-		panic(err.Error())
+		return
 	}
 
 	err = createDB(tempEnv.GOPATH)
 	if err != nil {
-		panic(err.Error())
+		return
 	}
 
 	checkIntegrity(o, tempEnv)
@@ -214,9 +216,10 @@ func updatePackage(o *Options, dB *sql.DB, pkg string) {
 		}
 		fmt.Printf("%s\n", b)
 		//Exit(UpdateConflict)
-		panic("update conflict")
+		return fmt.Errorf("update conflict")
+		// panic("update conflict")
 	}
-	moveCandidatesToGOPATH(o, tempEnv, candidates...)
+	return moveCandidatesToGOPATH(o, tempEnv, candidates...)
 }
 
 func allPackages(o *Options, env *exports.Environment) (a []*exports.Package) {
