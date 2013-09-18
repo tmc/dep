@@ -1,12 +1,10 @@
 package dep
 
 import (
-	_ "code.google.com/p/go.exp/inotify"
 	"encoding/json"
 	"fmt"
 	"github.com/metakeule/cli"
 	"github.com/metakeule/dep/db"
-	_ "launchpad.net/goamz/aws"
 	"os"
 )
 
