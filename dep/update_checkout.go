@@ -242,9 +242,11 @@ func _updatePackage(tmpDir string, o *Options, dB *db.DB, pkg string) (conflicts
 	candidates := getCandidatesForMovement(o, tempEnv)
 
 	for _, candidate := range candidates {
-		errs := checkConflicts(o, dB, tempEnv, candidate)
-		if len(errs) > 0 {
-			conflicts[candidate.Path] = errs
+		if o.Env.PkgExists(candidate.Path) {
+			errs := checkConflicts(o, dB, tempEnv, candidate)
+			if len(errs) > 0 {
+				conflicts[candidate.Path] = errs
+			}
 		}
 	}
 	if len(conflicts) == 0 {
@@ -275,7 +277,7 @@ func UpdatePackage(o *Options, dB *db.DB, pkg string) error {
 func allPackages(env *exports.Environment) (a []*exports.Package) {
 	a = []*exports.Package{}
 	// prs := &allPkgParser{map[string]bool{}}
-	prs := newAllPkgParser(env.GOPATH)
+	prs := newAllPkgParser(env)
 	err := filepath.Walk(path.Join(env.GOPATH, "src"), prs.Walker)
 	if err != nil {
 		panic(err.Error())

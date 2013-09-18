@@ -222,7 +222,7 @@ func hasConflict(dB *db.DB, p *exports.Package) (errors map[string][3]string) {
 func checkConflicts(o *Options, dB *db.DB, tempEnv *exports.Environment, pkg *exports.Package) (errs map[string][3]string) {
 	tempPkg := tempEnv.Pkg(pkg.Path)
 	if !o.Env.PkgExists(pkg.Path) {
-		panic(fmt.Sprintf("package %s is not installed"))
+		panic(fmt.Sprintf("package %s is not installed in %s", pkg.Path, o.Env.GOPATH))
 	}
 
 	// fmt.Printf("checking conflicts for db %#v\n", dB.File)
