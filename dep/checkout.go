@@ -28,7 +28,7 @@ func Checkout(c *cli.Context, o *Options) ErrorCode {
 		panic(err.Error())
 	}
 
-	revisions := map[string]revision{}
+	revisions := map[string]Revision{}
 	err = json.Unmarshal(data, &revisions)
 	if err != nil {
 		panic(err.Error())

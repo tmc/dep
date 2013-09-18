@@ -22,6 +22,6 @@ func Register(c *cli.Context, o *Options) ErrorCode {
 	}
 
 	pkgs := packages(o)
-	registerPackages(o, dB, pkgs...)
+	registerPackages(o.Env, dB, pkgs...)
 	return 0
 }

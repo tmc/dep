@@ -2,7 +2,6 @@ package dep
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/metakeule/dep/db"
@@ -29,7 +28,7 @@ import (
    6. move candicate repos to path and go install them, update the registry
 */
 
-func goGetPackages(o *Options, tmpDir string, pkg string) {
+func GoGetPackages(o *Options, tmpDir string, pkg string) {
 	args := []string{"get", "-u", pkg}
 	cmd := exec.Command("go", args...)
 	cmd.Env = []string{
@@ -48,7 +47,7 @@ func goGetPackages(o *Options, tmpDir string, pkg string) {
 	}
 }
 
-func checkoutRevision(o *Options, r string, rev revision) {
+func CheckoutRevision(o *Options, r string, rev Revision) {
 	var checkoutErr error
 	switch rev.VCM {
 	case "bzr":
@@ -68,7 +67,7 @@ func checkoutRevision(o *Options, r string, rev revision) {
 	}
 }
 
-func checkIntegrity(o *Options, env *exports.Environment) {
+func CheckIntegrity(o *Options, env *exports.Environment) {
 	dB, err := db.Open(path.Join(env.GOPATH, "dep.db"))
 	if err != nil {
 		panic(err.Error())
@@ -77,18 +76,21 @@ func checkIntegrity(o *Options, env *exports.Environment) {
 	defer dB.Close()
 	conflicts := map[string]map[string][3]string{}
 
-	ps := allPackages(o, env)
-	registerPackages(o, dB, ps...)
+	ps := allPackages(env)
+	// fmt.Printf("all packages: %v\n", len(ps))
+	registerPackages(env, dB, ps...)
 	for _, p := range ps {
 		// TODO: do something like hasConflict() but for a new db
 		errs := hasConflict(dB, p)
 		if len(errs) > 0 {
 			conflicts[p.Path] = errs
 		}
-		res, e := runGoTest(o, env.GOPATH, path.Join(env.GOPATH, "src", p.Path))
-		if e != nil {
-			panic(fmt.Sprintf("Error while running test for package %s in tempdir:\n%s\n", p.Path, res))
-		}
+		/*
+			res, e := runGoTest(o, env.GOPATH, path.Join(env.GOPATH, "src", p.Path))
+			if e != nil {
+				panic(fmt.Sprintf("Error while running test for package %s in tempdir:\n%s\n", p.Path, res))
+			}
+		*/
 	}
 	if len(conflicts) > 0 {
 		b, e := json.MarshalIndent(conflicts, "", "  ")
@@ -103,26 +105,33 @@ func checkIntegrity(o *Options, env *exports.Environment) {
 
 func getCandidatesForMovement(o *Options, tempEnv *exports.Environment) (pkgs []*exports.Package) {
 	// TODO for all packages in tempEnv: check if they are in GOPATH and if the revision of the repo is the same
-	visited := map[string]bool{}
-	ps := allPackages(o, tempEnv)
+	skip := map[string]bool{}
+	ps := allPackages(tempEnv)
 	pkgs = []*exports.Package{}
 
 	for _, p := range ps {
+		//fmt.Printf("a package in ", ...)
 		dir, _ := p.Dir()
 		r := _repoRoot(dir)
-		if visited[r] {
+		if skip[r] {
 			continue
 		}
-
-		_, err := os.Stat(path.Join(o.GOPATH, "src", r))
+		_, err := os.Stat(path.Join(o.GOPATH, "src", p.Path))
+		/*
+			if err != nil {
+				fmt.Printf("can't find: %s\n", path.Join(o.GOPATH, "src", p.Path))
+			}
+		*/
 		if err == nil {
 			revNew := pkgRevision(o, dir, "")
 			revOld := pkgRevision(o, path.Join(o.GOPATH, "src", p.Path), "")
 			if revNew.Rev == revOld.Rev {
+				skip[r] = true
 				continue
 			}
 		}
-		visited[r] = true
+
+		// fmt.Printf("add candidate: %s\n", p.Path)
 		pkgs = append(pkgs, p)
 	}
 
@@ -134,6 +143,13 @@ func moveCandidatesToGOPATH(o *Options, tempEnv *exports.Environment, pkgs ...*e
 
 	for _, pkg := range pkgs {
 		dir := path.Join(tempEnv.GOPATH, "src", pkg.Path)
+		_, e := os.Stat(dir)
+
+		// already moved
+		if e != nil {
+			continue
+		}
+
 		r := _repoRoot(dir)
 		if visited[r] {
 			continue
@@ -155,15 +171,21 @@ func moveCandidatesToGOPATH(o *Options, tempEnv *exports.Environment, pkgs ...*e
 	return
 }
 
-func checkoutDependanciesByRevFile(o *Options, gopath string, pkg string) error {
-	data, err := ioutil.ReadFile(path.Join(gopath, "src", pkg, revFileName))
-
+func GetDependancyRevisions(gopath, pkg string) (r map[string]Revision, err error) {
+	var data []byte
+	data, err = ioutil.ReadFile(path.Join(gopath, "src", pkg, revFileName))
 	if err != nil {
-		return err
+		return
 	}
 
-	revisions := map[string]revision{}
-	err = json.Unmarshal(data, &revisions)
+	r = map[string]Revision{}
+	err = json.Unmarshal(data, &r)
+	return
+}
+
+func CheckoutDependanciesByRevFile(o *Options, gopath string, pkg string) error {
+	revisions, err := GetDependancyRevisions(gopath, pkg)
+
 	if err != nil {
 		return err
 	}
@@ -179,31 +201,32 @@ func checkoutDependanciesByRevFile(o *Options, gopath string, pkg string) error 
 		}
 		visited[r] = true
 		// fmt.Printf("checking out: \n\tpkg %v\n\trev: %s\n\n", p, rev.Rev)
-		checkoutRevision(o, r, rev)
+		CheckoutRevision(o, r, rev)
 	}
 	return nil
 }
 
-func updatePackage(o *Options, dB *sql.DB, pkg string) (err error) {
+func UpdatePackage(o *Options, dB *db.DB, pkg string) (err error) {
 	tmpDir := mkdirTempDir(o)
-	goGetPackages(o, tmpDir, pkg)
+	GoGetPackages(o, tmpDir, pkg)
 	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
-	err = checkoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
+	err = CheckoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
 
 	if err != nil {
 		return
 	}
 
-	err = createDB(tempEnv.GOPATH)
+	err = CreateDB(tempEnv.GOPATH)
 	if err != nil {
 		return
 	}
 
-	checkIntegrity(o, tempEnv)
+	CheckIntegrity(o, tempEnv)
 	conflicts := map[string]map[string][3]string{}
 	candidates := getCandidatesForMovement(o, tempEnv)
 
 	for _, candidate := range candidates {
+		// fmt.Printf("candidate for movement: %s\n", candidate.Path)
 		errs := checkConflicts(o, dB, tempEnv, candidate)
 		if len(errs) > 0 {
 			conflicts[candidate.Path] = errs
@@ -222,7 +245,7 @@ func updatePackage(o *Options, dB *sql.DB, pkg string) (err error) {
 	return moveCandidatesToGOPATH(o, tempEnv, candidates...)
 }
 
-func allPackages(o *Options, env *exports.Environment) (a []*exports.Package) {
+func allPackages(env *exports.Environment) (a []*exports.Package) {
 	a = []*exports.Package{}
 	// prs := &allPkgParser{map[string]bool{}}
 	prs := newAllPkgParser(env.GOPATH)

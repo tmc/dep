@@ -3,7 +3,6 @@ package dep
 import (
 	"bytes"
 	_ "code.google.com/p/go.exp/inotify"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	// "github.com/metakeule/cli"
@@ -54,9 +53,10 @@ func _store(c *cli.Context) ErrorCode {
 }
 */
 
-func _registerPackage(o *Options, pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps []*db.Exp, dbImps []*db.Imp) {
+func _registerPackage(env *exports.Environment, pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps []*db.Exp, dbImps []*db.Imp) {
 	p := &db.Pkg{}
 	p.Package = pkg.Path
+	//fmt.Printf("registering %s\n", pkg.Path)
 	p.Json = asJson(pkg)
 	pkgMap[pkg.Path] = p
 	dbExps = []*db.Exp{}
@@ -66,8 +66,8 @@ func _registerPackage(o *Options, pkgMap map[string]*db.Pkg, pkg *exports.Packag
 		if _, has := pkgMap[im]; has {
 			continue
 		}
-		imPkg := o.Env.Pkg(im)
-		pExp, pImp := _registerPackage(o, pkgMap, imPkg)
+		imPkg := env.Pkg(im)
+		pExp, pImp := _registerPackage(env, pkgMap, imPkg)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
 	}
@@ -94,7 +94,7 @@ func _registerPackage(o *Options, pkgMap map[string]*db.Pkg, pkg *exports.Packag
 	return
 }
 
-func createDB(gopath string) error {
+func CreateDB(gopath string) error {
 	_, dbFileerr := os.Stat(DEP(gopath))
 	dB, err := db.Open(DEP(gopath))
 	if err != nil {
@@ -108,20 +108,22 @@ func createDB(gopath string) error {
 	return nil
 }
 
-func registerPackages(o *Options, dB *sql.DB, pkgs ...*exports.Package) {
+func registerPackages(env *exports.Environment, dB *db.DB, pkgs ...*exports.Package) {
 	dbExps := []*db.Exp{}
 	dbImps := []*db.Imp{}
 	pkgMap := map[string]*db.Pkg{}
 
 	for _, pkg := range pkgs {
-		pExp, pImp := _registerPackage(o, pkgMap, pkg)
+		pExp, pImp := _registerPackage(env, pkgMap, pkg)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
 	}
 
 	dbPkgs := []*db.Pkg{}
+	// fmt.Printf("register packages for db %#v\n", dB.File)
 
 	for _, dbPgk := range pkgMap {
+		// fmt.Printf("register %#v\n", dbPgk.Package)
 		dbPkgs = append(dbPkgs, dbPgk)
 	}
 
@@ -191,19 +193,22 @@ func mkdirTempDir(o *Options) (tmpGoPath string) {
 */
 
 // TODO: add verbose flag for verbose output
-func hasConflict(dB *sql.DB, p *exports.Package) (errors map[string][3]string) {
+func hasConflict(dB *db.DB, p *exports.Package) (errors map[string][3]string) {
 	pkg := p.PackageJSON()
+	//fmt.Printf("\n\n\n\nchecking conflict for package %#v\n", p.Path)
 	imp, err := db.GetImported(dB, pkg.Path)
 	if err != nil {
 		panic(err.Error())
 	}
+	// fmt.Printf("package %s in imported from %v places\n", p.Path, len(imp))
 
 	errors = map[string][3]string{}
 
 	for _, im := range imp {
 		key := fmt.Sprintf("%s: %s", im.Package, im.Name)
-
+		// fmt.Printf("package %#v imports: %s\n", im.Package, im.Name)
 		if val, exists := pkg.Exports[im.Name]; exists {
+			// fmt.Printf("\n\ta: %#v\n\tb: %#v\n", val, im.Value)
 			if val != im.Value {
 				errors[key] = [3]string{"changed", im.Value, val} //fmt.Sprintf("%s will change as required from %s (was %s, would be %s)", im.Name, im.Package, im.Value, val)
 			}
@@ -214,13 +219,14 @@ func hasConflict(dB *sql.DB, p *exports.Package) (errors map[string][3]string) {
 	return
 }
 
-func checkConflicts(o *Options, dB *sql.DB, tempEnv *exports.Environment, pkg *exports.Package) (errs map[string][3]string) {
+func checkConflicts(o *Options, dB *db.DB, tempEnv *exports.Environment, pkg *exports.Package) (errs map[string][3]string) {
 	tempPkg := tempEnv.Pkg(pkg.Path)
 	if !o.Env.PkgExists(pkg.Path) {
 		panic(fmt.Sprintf("package %s is not installed"))
 	}
 
-	registerPackages(o, dB, pkg)
+	// fmt.Printf("checking conflicts for db %#v\n", dB.File)
+	//registerPackages(tempEnv, dB, pkg)
 	errs = hasConflict(dB, tempPkg)
 	return
 }
@@ -281,7 +287,7 @@ func getRevCmd(o *Options, dir string, c string, args ...string) string {
 	return strings.Trim(stdout.String(), "\n\r")
 }
 
-func getRevisionGit(o *Options, dir string) string {
+func GetRevisionGit(o *Options, dir string) string {
 	return getRevCmd(o, dir, "git", "rev-parse", "HEAD")
 }
 
@@ -292,7 +298,7 @@ func getRevisionHg(o *Options, dir string) string {
 var bzrRevRe = regexp.MustCompile(`revision-id:\s*([^\s]+)`)
 
 // maps a package path to a vcs and a revision
-type revision struct {
+type Revision struct {
 	VCM    string
 	Rev    string
 	Parent string
@@ -307,7 +313,7 @@ func getRevisionBzr(o *Options, dir string) string {
 	return sm[0][1]
 }
 
-func pkgRevision(o *Options, dir string, parent string) (rev revision) {
+func pkgRevision(o *Options, dir string, parent string) (rev Revision) {
 	//dir := path.Join(exports.DefaultEnv.GOPATH, "src", pkgPath)
 	vcs, root, err := vcsForDir(dir)
 	if err != nil {
@@ -317,7 +323,7 @@ func pkgRevision(o *Options, dir string, parent string) (rev revision) {
 	var r string
 	switch vcs.cmd {
 	case "git":
-		r = getRevisionGit(o, dir)
+		r = GetRevisionGit(o, dir)
 	case "hg":
 		r = getRevisionHg(o, dir)
 	case "bzr":
@@ -328,10 +334,10 @@ func pkgRevision(o *Options, dir string, parent string) (rev revision) {
 		panic("unknown vcs command " + vcs.cmd)
 
 	}
-	return revision{vcs.cmd, r, parent, ""}
+	return Revision{vcs.cmd, r, parent, ""}
 }
 
-func indirectRev(o *Options, revisions map[string]revision, pkg *exports.Package, parent string) {
+func indirectRev(o *Options, revisions map[string]Revision, pkg *exports.Package, parent string) {
 	for im, _ := range pkg.Imports {
 		if _, has := revisions[im]; !has {
 			revisions[im] = pkgRevision(o, path.Join(o.GOPATH, "src", im), pkg.Path)
@@ -380,7 +386,7 @@ func _repoRoot(dir string) string {
 	_, root, err := vcsForDir(dir)
 	// fmt.Printf("root by vcsForDir is: %#v\n", root)
 	if err != nil {
-		panic(err.Error())
+		panic("can't find repodir for " + dir + " : " + err.Error())
 	}
 	return root
 }

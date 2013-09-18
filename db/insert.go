@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func InsertPackages(db *sql.DB, p []*Pkg, e []*Exp, im []*Imp) (err error) {
+func InsertPackages(db *DB, p []*Pkg, e []*Exp, im []*Imp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
@@ -66,7 +66,7 @@ func _insertExports(tx *sql.Tx, e ...*Exp) (err error) {
 	return
 }
 
-func InsertExports(db *sql.DB, e ...*Exp) (err error) {
+func InsertExports(db *DB, e ...*Exp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
@@ -101,7 +101,7 @@ func _insertImports(tx *sql.Tx, im ...*Imp) (err error) {
 	return
 }
 
-func InsertImports(db *sql.DB, im ...*Imp) (err error) {
+func InsertImports(db *DB, im ...*Imp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {

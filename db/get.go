@@ -4,7 +4,7 @@ import (
 	"database/sql"
 )
 
-func GetImported(db *sql.DB, importedPkg string) (imps []*Imp, err error) {
+func GetImported(db *DB, importedPkg string) (imps []*Imp, err error) {
 	var rows *sql.Rows
 	imps = []*Imp{}
 	rows, err = db.Query("select package, import, name, value from imports where import = ?", importedPkg)
@@ -23,7 +23,7 @@ func GetImported(db *sql.DB, importedPkg string) (imps []*Imp, err error) {
 	return
 }
 
-func GetPackage(db *sql.DB, packagePath string, withExports bool, withImports bool) (p *Pkg, exps []*Exp, imps []*Imp, err error) {
+func GetPackage(db *DB, packagePath string, withExports bool, withImports bool) (p *Pkg, exps []*Exp, imps []*Imp, err error) {
 	var row *sql.Row
 	p = &Pkg{}
 	row = db.QueryRow("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
@@ -69,7 +69,7 @@ func GetPackage(db *sql.DB, packagePath string, withExports bool, withImports bo
 	return
 }
 
-func GetAllPackages(db *sql.DB) (ps []*Pkg, err error) {
+func GetAllPackages(db *DB) (ps []*Pkg, err error) {
 	var rows *sql.Rows
 	ps = []*Pkg{}
 	rows, err = db.Query("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages")
@@ -88,7 +88,7 @@ func GetAllPackages(db *sql.DB) (ps []*Pkg, err error) {
 	return
 }
 
-func GetAllImports(db *sql.DB) (is []*Imp, err error) {
+func GetAllImports(db *DB) (is []*Imp, err error) {
 	var rows *sql.Rows
 	is = []*Imp{}
 	rows, err = db.Query("select package, import, name, value from imports")
@@ -107,7 +107,7 @@ func GetAllImports(db *sql.DB) (is []*Imp, err error) {
 	return
 }
 
-func GetAllExports(db *sql.DB) (es []*Exp, err error) {
+func GetAllExports(db *DB) (es []*Exp, err error) {
 	var rows *sql.Rows
 	es = []*Exp{}
 	rows, err = db.Query("select package, name, value from exports")

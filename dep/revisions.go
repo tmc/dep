@@ -14,10 +14,10 @@ func Revisions(c *cli.Context, o *Options) ErrorCode {
 	stdout := c.Bool("stdout")
 	inclIndirect := c.Bool("include-indirect")
 	pkgs := packages(o)
-	allrevisions := map[string]revision{}
+	allrevisions := map[string]Revision{}
 
 	for _, pkg := range pkgs {
-		revisions := map[string]revision{}
+		revisions := map[string]Revision{}
 		for im, _ := range pkg.Imports {
 			revisions[im] = pkgRevision(o, path.Join(o.Env.GOPATH, "src", im), pkg.Path)
 			if inclIndirect {

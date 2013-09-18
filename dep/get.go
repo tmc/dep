@@ -23,7 +23,7 @@ func Get(c *cli.Context, o *Options) ErrorCode {
 	}
 
 	defer func() {
-		registerPackages(o, dB, installed...)
+		registerPackages(o.Env, dB, installed...)
 		dB.Close()
 	}()
 

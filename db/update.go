@@ -4,7 +4,7 @@ import (
 	"database/sql"
 )
 
-func UpdatePackage(db *sql.DB, p *Pkg, i []*Imp, e []*Exp) (err error) {
+func UpdatePackage(db *DB, p *Pkg, i []*Imp, e []*Exp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {

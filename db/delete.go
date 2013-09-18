@@ -19,7 +19,7 @@ func _deletePackage(pkgPath string, tx *sql.Tx) (err error) {
 	return
 }
 
-func DeletePackage(db *sql.DB, pkgPath string) (err error) {
+func DeletePackage(db *DB, pkgPath string) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {

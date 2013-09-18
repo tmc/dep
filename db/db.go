@@ -13,8 +13,42 @@ type pqdrv int
 //var db *sql.DB
 var DEBUG = false
 
-func Open(dbfile string) (db *sql.DB, err error) {
-	return sql.Open("depdb", dbfile)
+type DB struct {
+	*sql.DB
+	File   string
+	Opened bool
+}
+
+func (ø *DB) Close() error {
+	// fmt.Printf("CLOSING: %s\n", ø.File)
+	err := ø.DB.Close()
+	if err != nil {
+		// fmt.Printf("ERROR: %s\n", err.Error())
+		return err
+	}
+	ø.Opened = false
+	return nil
+}
+
+func (ø *DB) Open() (*DB, error) {
+	if ø.Opened {
+		fmt.Printf("ALLREADY OPENED: %s\n", ø.File)
+		return ø, nil
+	}
+	return Open(ø.File)
+}
+
+func Open(dbfile string) (db *DB, err error) {
+	var d *sql.DB
+	d, err = sql.Open("depdb", dbfile)
+	// fmt.Printf("OPEN %s\n", dbfile)
+	/*
+		    if err != nil {
+				fmt.Printf("ERROR: %s\n", err.Error())
+			}
+	*/
+	db = &DB{d, dbfile, true}
+	return
 }
 
 var drv = &sqlite.SQLiteDriver{}
@@ -27,7 +61,7 @@ func (d pqdrv) Open(name string) (driver.Conn, error) {
 
 var lock = make(chan int, 1)
 
-func CleanupTables(db *sql.DB) {
+func CleanupTables(db *DB) {
 	var err error
 	sqls := []string{
 		`delete from packages`,
@@ -44,7 +78,8 @@ func CleanupTables(db *sql.DB) {
 	}
 }
 
-func CreateTables(db *sql.DB) {
+func CreateTables(db *DB) {
+	// fmt.Printf("CREATE TABLES FOR %s\n", db.File)
 	var err error
 	sqls := []string{
 		"create table foo (id integer not null primary key, name text)",
