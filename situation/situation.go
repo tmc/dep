@@ -124,17 +124,23 @@ func Update(pkg, rev string) error {
 		panic(err.Error())
 	}
 
-	dep.CheckIntegrity(opt, opt.Env)
+	err = dep.CheckIntegrity(opt, opt.Env)
+	if err != nil {
+		panic(err.Error())
+	}
 
-	dB, err := db.Open(dep.DEP(opt.GOPATH))
+	var dB *db.DB
+
+	dB, err = db.Open(dep.DEP(opt.GOPATH))
 	if err != nil {
 		panic(err.Error())
 	}
 	defer dB.Close()
-	// fmt.Println("UPDATING...")
+	//fmt.Println("UPDATING...")
 	// updatePackage(o, dB, pkg)
 	err = dep.UpdatePackage(opt, dB, pkg)
 	if err != nil {
+		//	fmt.Printf("normal error in updating package\n")
 		return err
 	}
 

@@ -67,10 +67,11 @@ func CheckoutRevision(o *Options, r string, rev Revision) {
 	}
 }
 
-func CheckIntegrity(o *Options, env *exports.Environment) {
-	dB, err := db.Open(path.Join(env.GOPATH, "dep.db"))
+func CheckIntegrity(o *Options, env *exports.Environment) (err error) {
+	var dB *db.DB
+	dB, err = db.Open(path.Join(env.GOPATH, "dep.db"))
 	if err != nil {
-		panic(err.Error())
+		return
 	}
 
 	defer dB.Close()
@@ -99,8 +100,10 @@ func CheckIntegrity(o *Options, env *exports.Environment) {
 		}
 		fmt.Printf("%s\n", b)
 		//Exit(UpdateConflict)
-		panic("update conflict")
+		return fmt.Errorf("integrity conflict in GOPATH %s", env.GOPATH)
+		// panic("update conflict")
 	}
+	return nil
 }
 
 func getCandidatesForMovement(o *Options, tempEnv *exports.Environment) (pkgs []*exports.Package) {
@@ -221,7 +224,10 @@ func UpdatePackage(o *Options, dB *db.DB, pkg string) (err error) {
 		return
 	}
 
-	CheckIntegrity(o, tempEnv)
+	err = CheckIntegrity(o, tempEnv)
+	if err != nil {
+		return
+	}
 	conflicts := map[string]map[string][3]string{}
 	candidates := getCandidatesForMovement(o, tempEnv)
 
