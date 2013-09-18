@@ -215,7 +215,64 @@ func CheckoutDependanciesByRevFile(o *Options, gopath string, pkg string) error 
 	return nil
 }
 
-func UpdatePackage(o *Options, dB *db.DB, pkg string) (err error) {
+// return no errors for conflicts, only for severe errors
+func _updatePackage(tmpDir string, o *Options, dB *db.DB, pkg string) (conflicts map[string]map[string][3]string, err error) {
+	conflicts = map[string]map[string][3]string{}
+	err = GoGetPackages(o, tmpDir, pkg)
+	if err != nil {
+		return
+	}
+	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
+	err = CheckoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
+
+	if err != nil {
+		return
+	}
+
+	err = CreateDB(tempEnv.GOPATH)
+	if err != nil {
+		return
+	}
+
+	err = CheckIntegrity(o, tempEnv)
+	if err != nil {
+		return
+	}
+
+	candidates := getCandidatesForMovement(o, tempEnv)
+
+	for _, candidate := range candidates {
+		errs := checkConflicts(o, dB, tempEnv, candidate)
+		if len(errs) > 0 {
+			conflicts[candidate.Path] = errs
+		}
+	}
+	if len(conflicts) == 0 {
+		err = moveCandidatesToGOPATH(o, tempEnv, candidates...)
+	}
+	return
+}
+
+func UpdatePackage(o *Options, dB *db.DB, pkg string) error {
+	tmpDir := mkdirTempDir(o)
+	conflicts, err := _updatePackage(tmpDir, o, dB, pkg)
+
+	if err != nil {
+		return err
+	}
+
+	if len(conflicts) > 0 {
+		b, e := json.MarshalIndent(conflicts, "", "  ")
+		if e != nil {
+			panic(e.Error())
+		}
+		fmt.Printf("%s\n", b)
+		return fmt.Errorf("update conflict")
+	}
+	return nil
+}
+
+func UpdatePackageOld(o *Options, dB *db.DB, pkg string) (err error) {
 	tmpDir := mkdirTempDir(o)
 	err = GoGetPackages(o, tmpDir, pkg)
 	if err != nil {
