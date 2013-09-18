@@ -28,8 +28,13 @@ import (
    6. move candicate repos to path and go install them, update the registry
 */
 
-func GoGetPackages(o *Options, tmpDir string, pkg string) {
-	args := []string{"get", "-u", pkg}
+func GoGetPackages(o *Options, tmpDir string, pkg string) error {
+	//args := []string{"get", "-u", pkg}
+	// With get -d we don't install the packages
+	// TODO check if we want to install them at a later point
+	// e.g. after the dependant packages have been checked out
+	// to the correct revisions
+	args := []string{"get", "-u", "-d", pkg}
 	cmd := exec.Command("go", args...)
 	cmd.Env = []string{
 		fmt.Sprintf(`GOPATH=%s`, tmpDir),
@@ -43,8 +48,9 @@ func GoGetPackages(o *Options, tmpDir string, pkg string) {
 	cmd.Stdout = &stdout
 	err := cmd.Run()
 	if err != nil {
-		panic(stdout.String() + "\n" + stderr.String())
+		return fmt.Errorf("Error while go getting %#v:%s\n", pkg, stdout.String()+"\n"+stderr.String())
 	}
+	return nil
 }
 
 func CheckoutRevision(o *Options, r string, rev Revision) {
@@ -211,7 +217,10 @@ func CheckoutDependanciesByRevFile(o *Options, gopath string, pkg string) error 
 
 func UpdatePackage(o *Options, dB *db.DB, pkg string) (err error) {
 	tmpDir := mkdirTempDir(o)
-	GoGetPackages(o, tmpDir, pkg)
+	err = GoGetPackages(o, tmpDir, pkg)
+	if err != nil {
+		return
+	}
 	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
 	err = CheckoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
 

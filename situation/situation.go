@@ -30,7 +30,10 @@ func prepare(gopath string) {
 }
 
 func _gogetrevision(o *dep.Options, pkg string, rev string) {
-	dep.GoGetPackages(o, o.GOPATH, pkg)
+	err := dep.GoGetPackages(o, o.GOPATH, pkg)
+	if err != nil {
+		panic(err.Error())
+	}
 	dir := path.Join(o.GOPATH, "src", pkg)
 	r := dep.Revision{}
 	r.VCM = "git"
@@ -119,14 +122,17 @@ func Update(pkg, rev string) error {
 	opt.HOME = os.Getenv("HOME")
 	opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
 
-	dep.GoGetPackages(opt, opt.GOPATH, pkg)
+	err := dep.GoGetPackages(opt, opt.GOPATH, pkg)
+	if err != nil {
+		panic(err.Error())
+	}
 	dir := path.Join(opt.GOPATH, "src", pkg)
 	master := getmasterRevision(pkg, dir)
 	r := dep.Revision{}
 	r.VCM = "git"
 	r.Rev = rev
 	dep.CheckoutRevision(opt, dir, r)
-	err := dep.CheckoutDependanciesByRevFile(opt, opt.GOPATH, pkg)
+	err = dep.CheckoutDependanciesByRevFile(opt, opt.GOPATH, pkg)
 	if err != nil {
 		panic(err.Error())
 	}
