@@ -15,8 +15,7 @@ import (
 
 func prepare(gopath string) {
 	os.RemoveAll(gopath)
-	var err error
-	err = os.MkdirAll(path.Join(gopath, "src"), 0755)
+	err := os.MkdirAll(path.Join(gopath, "src"), 0755)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -62,6 +61,29 @@ func _getWithDeps(o *dep.Options, pkg string, pkgRev string) (err error) {
 	return
 }
 
+func CleanEnv() {
+	opt := &dep.Options{}
+	gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "situation", "gopath")
+	opt.GOPATH = gopath
+	opt.GOROOT = runtime.GOROOT()
+	opt.HOME = os.Getenv("HOME")
+	opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
+	prepare(gopath)
+}
+
+// go get the given revision of the given package
+// with its dependancies
+func GetPackage(pkg, rev string) error {
+	opt := &dep.Options{}
+	gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "situation", "gopath")
+	opt.GOPATH = gopath
+	opt.GOROOT = runtime.GOROOT()
+	opt.HOME = os.Getenv("HOME")
+	opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
+	//prepare(gopath)
+	return _getWithDeps(opt, pkg, rev)
+}
+
 /*
    panic for the following
    - goget error
@@ -84,7 +106,14 @@ func _getWithDeps(o *dep.Options, pkg string, pkgRev string) (err error) {
 func Update(pkg, rev string) error {
 	opt := &dep.Options{}
 	gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "situation", "gopath")
-	prepare(gopath)
+	//prepare(gopath)
+
+	/*
+		defer func() {
+			os.RemoveAll(gopath)
+		}()
+	*/
+
 	opt.GOPATH = gopath
 	opt.GOROOT = runtime.GOROOT()
 	opt.HOME = os.Getenv("HOME")
