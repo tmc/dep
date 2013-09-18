@@ -2,23 +2,23 @@ package dep
 
 import (
 	"bytes"
-	"path/filepath"
-	// "encoding/json"
+	"encoding/json"
 	"fmt"
 	"github.com/metakeule/exports"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 )
 
 func getJson(o *Options, pkg string) string {
-	b, err := o.Env.Pkg(pkg).MarshalJSON()
+	b, err := json.Marshal(o.Env.Pkg(pkg))
 	if err != nil {
 		panic(err.Error())
 	}
 	return string(b)
 }
 
-func loadJson(pkgPath string, o *Options) (ø *exports.PackageJSON) {
+func loadJson(pkgPath string, o *Options) (ø *exports.Package) {
 	file, _ := filepath.Abs(path.Join(o.GOPATH, "src", pkgPath, "dep.json"))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -49,7 +49,7 @@ func MapEqual(a map[string]string, b map[string]string) bool {
 	return true
 }
 
-func packageDiff(old_ *exports.PackageJSON, new_ *exports.PackageJSON) string {
+func packageDiff(old_ *exports.Package, new_ *exports.Package) string {
 	var buffer bytes.Buffer
 	if old_.Path != new_.Path {
 		buffer.WriteString(

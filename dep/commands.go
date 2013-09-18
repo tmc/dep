@@ -62,7 +62,7 @@ func _registerPackage(env *exports.Environment, pkgMap map[string]*db.Pkg, pkg *
 	dbExps = []*db.Exp{}
 	dbImps = []*db.Imp{}
 
-	for im, _ := range pkg.Imports {
+	for im, _ := range pkg.ImportedPackages {
 		if _, has := pkgMap[im]; has {
 			continue
 		}
@@ -72,7 +72,7 @@ func _registerPackage(env *exports.Environment, pkgMap map[string]*db.Pkg, pkg *
 		dbImps = append(dbImps, pImp...)
 	}
 
-	pkgjs := pkg.PackageJSON()
+	pkgjs := pkg
 
 	for k, v := range pkgjs.Exports {
 		dbE := &db.Exp{}
@@ -194,7 +194,7 @@ func mkdirTempDir(o *Options) (tmpGoPath string) {
 
 // TODO: add verbose flag for verbose output
 func hasConflict(dB *db.DB, p *exports.Package) (errors map[string][3]string) {
-	pkg := p.PackageJSON()
+	pkg := p
 	//fmt.Printf("\n\n\n\nchecking conflict for package %#v\n", p.Path)
 	imp, err := db.GetImported(dB, pkg.Path)
 	if err != nil {
@@ -338,7 +338,7 @@ func pkgRevision(o *Options, dir string, parent string) (rev Revision) {
 }
 
 func indirectRev(o *Options, revisions map[string]Revision, pkg *exports.Package, parent string) {
-	for im, _ := range pkg.Imports {
+	for im, _ := range pkg.ImportedPackages {
 		if _, has := revisions[im]; !has {
 			revisions[im] = pkgRevision(o, path.Join(o.GOPATH, "src", im), pkg.Path)
 			indirectRev(o, revisions, o.Env.Pkg(im), pkg.Path)

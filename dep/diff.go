@@ -67,7 +67,7 @@ func Diff(c *cli.Context, o *Options) ErrorCode {
 		// TODO: check the hash instead, escp. check the exports and imports hash
 		if string(js) != string(dbpkg.Json) {
 			//__diff(a, b)
-			pkgjs := pk.PackageJSON()
+			pkgjs := pk
 
 			var oldExports = map[string]string{}
 

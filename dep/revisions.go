@@ -18,7 +18,7 @@ func Revisions(c *cli.Context, o *Options) ErrorCode {
 
 	for _, pkg := range pkgs {
 		revisions := map[string]Revision{}
-		for im, _ := range pkg.Imports {
+		for im, _ := range pkg.ImportedPackages {
 			revisions[im] = pkgRevision(o, path.Join(o.Env.GOPATH, "src", im), pkg.Path)
 			if inclIndirect {
 				indirectRev(o, revisions, o.Env.Pkg(im), pkg.Path)
