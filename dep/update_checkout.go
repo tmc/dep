@@ -272,51 +272,6 @@ func UpdatePackage(o *Options, dB *db.DB, pkg string) error {
 	return nil
 }
 
-func UpdatePackageOld(o *Options, dB *db.DB, pkg string) (err error) {
-	tmpDir := mkdirTempDir(o)
-	err = GoGetPackages(o, tmpDir, pkg)
-	if err != nil {
-		return
-	}
-	tempEnv := exports.NewEnv(runtime.GOROOT(), tmpDir)
-	err = CheckoutDependanciesByRevFile(o, tempEnv.GOPATH, pkg)
-
-	if err != nil {
-		return
-	}
-
-	err = CreateDB(tempEnv.GOPATH)
-	if err != nil {
-		return
-	}
-
-	err = CheckIntegrity(o, tempEnv)
-	if err != nil {
-		return
-	}
-	conflicts := map[string]map[string][3]string{}
-	candidates := getCandidatesForMovement(o, tempEnv)
-
-	for _, candidate := range candidates {
-		// fmt.Printf("candidate for movement: %s\n", candidate.Path)
-		errs := checkConflicts(o, dB, tempEnv, candidate)
-		if len(errs) > 0 {
-			conflicts[candidate.Path] = errs
-		}
-	}
-	if len(conflicts) > 0 {
-		b, e := json.MarshalIndent(conflicts, "", "  ")
-		if e != nil {
-			panic(e.Error())
-		}
-		fmt.Printf("%s\n", b)
-		//Exit(UpdateConflict)
-		return fmt.Errorf("update conflict")
-		// panic("update conflict")
-	}
-	return moveCandidatesToGOPATH(o, tempEnv, candidates...)
-}
-
 func allPackages(env *exports.Environment) (a []*exports.Package) {
 	a = []*exports.Package{}
 	// prs := &allPkgParser{map[string]bool{}}
