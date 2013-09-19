@@ -2,10 +2,17 @@
    {
       "Path": "github.com/metakeule/dep/depcore",
       "Exports": {
+         "*Environment.CLIRegister": "(*Environment) CLIRegister(...*exports.Package) ErrorCode",
+         "*Environment.Close": "(*Environment) Close()",
+         "*Environment.NewTentative": "(*Environment) NewTentative() *tentativeEnvironment",
+         "*Environment.Open": "(*Environment) Open()",
+         "*tentativeEnvironment.Close": "(*tentativeEnvironment) Close()",
+         "*testEnv.Get": "(*testEnv) Get(string,string) error",
+         "*testEnv.Update": "(*testEnv) Update(string,string) error",
          "CLICheckout": "CLICheckout(string,bool,*Environment) ErrorCode",
-         "CLIRegister": "CLIRegister(*Environment,...*exports.Package) ErrorCode",
          "Cleanup": "Cleanup()",
-         "Environment": "type Environment struct {;   *github.com/metakeule/exports#Environment;  TMPDIR string;}",
+         "DEBUG": "DEBUG false = false",
+         "Environment": "type Environment struct {;   *github.com/metakeule/exports#Environment;  DB *db;  TMPDIR string;}",
          "ErrorCode": "type ErrorCode int",
          "ErrorCode.Error": "(ErrorCode) Error() string",
          "ErrorCodeInfos": "ErrorCodeInfos map[ErrorCode]string = map[ErrorCode]string{}",
@@ -16,29 +23,22 @@
          "ErrorDirNotAPackage": "ErrorDirNotAPackage",
          "ErrorGOPATHInvalid": "ErrorGOPATHInvalid",
          "ErrorGOPATHNotSet": "ErrorGOPATHNotSet",
-         "ErrorGOROOTNotSet": "ErrorGOROOTNotSet ErrorCode = iota",
+         "ErrorGOROOTNotSet": "ErrorGOROOTNotSet",
          "ErrorInvalidOptions": "ErrorInvalidOptions",
          "ErrorPackageInternal": "ErrorPackageInternal",
          "ErrorPackageInvalid": "ErrorPackageInvalid",
          "ErrorPackageNotInGOPATH": "ErrorPackageNotInGOPATH",
          "ErrorUpdateConflict": "ErrorUpdateConflict",
          "NewEnv": "NewEnv(string) *Environment",
-         "SubPackages": "SubPackages(*github.com/metakeule/exports#Package)([]*github.com/metakeule/exports#Package,error)",
-         "TestCleanup": "TestCleanup()",
-         "TestGet": "TestGet(string,string) error",
-         "TestUpdate": "TestUpdate(string,string) error"
+         "NewTestEnv": "NewTestEnv() *testEnv",
+         "SubPackages": "SubPackages(*github.com/metakeule/exports#Package)([]*github.com/metakeule/exports#Package,error)"
       },
       "Imports": {
-         "github.com/metakeule/dep/db#*DB.Close": "(*DB) Close() error",
-         "github.com/metakeule/dep/db#*DB.Open": "(*DB) Open()(*DB,error)",
-         "github.com/metakeule/dep/db#CreateTables": "CreateTables(*DB)",
-         "github.com/metakeule/dep/db#DB": "type DB struct {;   *sql.DB;  File string;  Opened bool;}",
-         "github.com/metakeule/dep/db#Exp": "type Exp struct {;  Name string;  Package string;  Value string;}",
-         "github.com/metakeule/dep/db#GetImported": "GetImported(*DB,string)([]*Imp,error)",
-         "github.com/metakeule/dep/db#Imp": "type Imp struct {;  Import string;  Name string;  Package string;  Value string;}",
-         "github.com/metakeule/dep/db#InsertPackages": "InsertPackages(*DB,[]*Pkg,[]*Exp,[]*Imp) error",
-         "github.com/metakeule/dep/db#Open": "Open(string)(*DB,error)",
-         "github.com/metakeule/dep/db#Pkg": "type Pkg struct {;  ExportsMd5 string;  ImportsMd5 string;  InitMd5 string;  Json []byte;  JsonMd5 string;  Package string;}",
+         "github.com/mattn/go-sqlite3#*SQLiteDriver.Open": "(*SQLiteDriver) Open(string)(driver.Conn,error)",
+         "github.com/mattn/go-sqlite3#SQLiteDriver": "type SQLiteDriver struct {;  ConnectHook (*SQLiteConn) error;  Extensions []string;}",
+         "github.com/metakeule/dbwrap#*Wrapper.Open": "(*Wrapper) Open(string)(driver.Conn,error)",
+         "github.com/metakeule/dbwrap#New": "New(string,driver.Driver) *Wrapper",
+         "github.com/metakeule/dbwrap#Wrapper": "type Wrapper struct {;   driver.Driver;  AfterAll (driver.Conn,string,...interface{});  BeforeAll (driver.Conn,string,...interface{});  HandleBegin (driver.Conn)(driver.Tx,error);  HandleClose (driver.Conn) error;  HandleExec (driver.Execer,string,[]driver.Value)(driver.Result,error);  HandleOpen (string,driver.Conn)(driver.Conn,error);  HandlePrepare (driver.Conn,string)(driver.Stmt,error);  HandleQuery (driver.Queryer,string,[]driver.Value)(driver.Rows,error);}",
          "github.com/metakeule/exports#*Environment.Build": "(*Environment) Build() *build.Context",
          "github.com/metakeule/exports#*Environment.LoadJson": "(*Environment) LoadJson([]byte)(*Package,error)",
          "github.com/metakeule/exports#*Environment.Pkg": "(*Environment) Pkg(string) *Package",
@@ -52,6 +52,6 @@
          "github.com/metakeule/exports#NewEnv": "NewEnv(string,string) *Environment",
          "github.com/metakeule/exports#Package": "type Package struct {;  Env *Environment;  Exports map[string]string;  ImportedPackages map[string]bool;  Imports map[string]string;  InitMd5 string;  Internal bool;  Path string;  RawExports map[string]declaration;  RawImports map[string]declaration;  RawInits map[string]string;  RawMethods map[[2]string]*FuncDecl;}"
       },
-      "InitMd5": "3adce1226cf9333d99df043b9e792eb0"
+      "InitMd5": "b54df8630bc72ee6a819fe60de3c2738"
    }
 ]

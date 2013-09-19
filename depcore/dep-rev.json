@@ -2,37 +2,31 @@
   "code.google.com/p/go.exp/inotify": {
     "VCM": "hg",
     "Rev": "c88b16b74279a23234ddceeda8d1eb200b4442de",
-    "Parent": "github.com/metakeule/dep/dep",
-    "Tag": ""
-  },
-  "github.com/metakeule/cli": {
-    "VCM": "git",
-    "Rev": "16d10cc127e28110987a7b0bd692bbe53f549925",
-    "Parent": "github.com/metakeule/dep/dep",
+    "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   },
   "github.com/metakeule/dep/db": {
     "VCM": "git",
-    "Rev": "63d7ad4b2ba269163717984b307e385449514b39",
-    "Parent": "github.com/metakeule/dep/dep",
+    "Rev": "31885dd077aa714a7ca3e024c7104742bf61d4c6",
+    "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   },
   "github.com/metakeule/exports": {
     "VCM": "git",
     "Rev": "e10869cccc19bb52188b30df6735fae39e229fe6",
-    "Parent": "github.com/metakeule/dep/dep",
+    "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   },
   "github.com/metakeule/goh4": {
     "VCM": "git",
     "Rev": "de8d0f328aae529609a395247813ae53f5f40fac",
-    "Parent": "github.com/metakeule/dep/dep",
+    "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   },
   "launchpad.net/goamz/aws": {
     "VCM": "bzr",
     "Rev": "gustavo@niemeyer.net-20130302025623-vhn97ad46nln0840",
-    "Parent": "github.com/metakeule/dep/dep",
+    "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   }
 }
