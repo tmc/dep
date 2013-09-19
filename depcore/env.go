@@ -213,13 +213,13 @@ func (o *Environment) getRevision(dir string, parent string) (rev revision) {
 }
 
 // for each import, get the revisions
-func (o *Environment) currentImportRevisions(revisions map[string]revision, pkg *exports.Package, parent string) {
+func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pkg *exports.Package, parent string) {
 	for im, _ := range pkg.ImportedPackages {
 		if _, has := revisions[im]; !has {
 			p := o.Pkg(im)
 			d, _ := p.Dir()
 			revisions[im] = o.getRevision(d, pkg.Path)
-			o.currentImportRevisions(revisions, p, pkg.Path)
+			o.recursiveImportRevisions(revisions, p, pkg.Path)
 		}
 	}
 }

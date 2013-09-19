@@ -66,14 +66,13 @@ import (
 	"path"
 )
 
-func (o *Environment) CLIRevisions(pkg *exports.Package, includeIndirect bool) (data []byte, err error) {
+func (o *Environment) CLIRevisions(pkg *exports.Package, recursive bool) (data []byte, err error) {
 	revisions := map[string]revision{}
 	for im, _ := range pkg.ImportedPackages {
-		o.trackedImportRevisions(pkg)
+		o.trackedImportRevisions(pkg.Path)
 		revisions[im] = o.getRevision(o.PkgDir(im), pkg.Path)
-		if includeIndirect {
-
-			indirectRev(o, revisions, o.Pkg(im), pkg.Path)
+		if recursive {
+			o.recursiveImportRevisions(revisions, o.Pkg(im), pkg.Path)
 			continue
 		}
 	}
@@ -84,7 +83,7 @@ func (o *Environment) CLIRevisions(pkg *exports.Package, includeIndirect bool) (
 	}
 
 	dir, _ := pkg.Dir()
-	filename := path.Join(dir, file)
+	filename := path.Join(dir, revFileName)
 	err = ioutil.WriteFile(filename, data, 0644)
 	return
 }

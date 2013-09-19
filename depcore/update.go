@@ -70,3 +70,31 @@ func CLIUpdate(c *cli.Context, o *Options) ErrorCode {
 	return 0
 }
 */
+
+import (
+	"github.com/metakeule/exports"
+	"os"
+	// "path"
+	"path/filepath"
+)
+
+// keepToPath is the name under which tentative GOPATH is saved
+func (o *Environment) CLIUpdate(pkg *exports.Package, keepToPath string) (conflicts map[string]map[string][3]string, err error) {
+	o.Open()
+	defer o.Close()
+
+	conflicts, err = o.checkIntegrity()
+	if err != nil {
+		return
+	}
+
+	t := o.NewTentative()
+	conflicts, err = t.updatePackage(pkg.Path)
+
+	if keepToPath != "" && err != nil {
+		abs, _ := filepath.Abs(keepToPath)
+		os.Rename(t.GOPATH, abs)
+	}
+
+	return
+}
