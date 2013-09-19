@@ -2,44 +2,31 @@ package depcore
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"github.com/metakeule/exports"
 	_ "github.com/metakeule/goh4"
 	"go/build"
-	"io"
-	"strings"
 	//	"io"
 	// "go/parser"
 	// "go/token"
 	// "io/ioutil"
 	"os"
-	"path"
+	// "path"
 	"path/filepath"
 )
 
-/*
-Default
-*/
-
-//var PACKAGE *exports.Package
-
-var _ = fmt.Print
-
-type allPkgParser struct {
+type subPackages struct {
 	packages map[string]bool
 	env      *exports.Environment
 }
 
-func newAllPkgParser(env *exports.Environment) *allPkgParser {
-	return &allPkgParser{
+func newSubPackages(env *exports.Environment) *subPackages {
+	return &subPackages{
 		packages: map[string]bool{},
 		env:      env,
 	}
 }
 
-func (ø *allPkgParser) Walker(path string, info os.FileInfo, err error) error {
-
+func (ø *subPackages) Walker(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
@@ -52,57 +39,10 @@ func (ø *allPkgParser) Walker(path string, info os.FileInfo, err error) error {
 	return nil
 }
 
-/* stolen from go1.1/src/cmd/go/main.go */
-
-// envForDir returns a copy of the environment
-// suitable for running in the given directory.
-// The environment is the current process's environment
-// but with an updated $PWD, so that an os.Getwd in the
-// child will be faster.
-func envForDir(dir string) []string {
-	env := os.Environ()
-	// Internally we only use rooted paths, so dir is rooted.
-	// Even if dir is not rooted, no harm done.
-	return mergeEnvLists([]string{"PWD=" + dir}, env)
-}
-
-// mergeEnvLists merges the two environment lists such that
-// variables with the same name in "in" replace those in "out".
-func mergeEnvLists(in, out []string) []string {
-NextVar:
-	for _, inkv := range in {
-		k := strings.SplitAfterN(inkv, "=", 2)[0]
-		for i, outkv := range out {
-			if strings.HasPrefix(outkv, k) {
-				out[i] = inkv
-				continue NextVar
-			}
-		}
-		out = append(out, inkv)
-	}
-	return out
-}
-
-var errHTTP = errors.New("no http in bootstrap go command")
-
-func httpGET(url string) ([]byte, error) {
-	return nil, errHTTP
-}
-
-func httpsOrHTTP(importPath string) (string, io.ReadCloser, error) {
-	return "", nil, errHTTP
-}
-
-func parseMetaGoImports(r io.Reader) (imports []metaImport) {
-	panic("unreachable")
-}
-
-/* End Of stolen from go1.1/src/cmd/go/main.go */
-
 // return subpackages of the not internal given package
 func SubPackages(pkg *exports.Package) (subs []*exports.Package, err error) {
 	subs = []*exports.Package{}
-	all := newAllPkgParser(pkg.Env)
+	all := newSubPackages(pkg.Env)
 	dir, _ := pkg.Dir()
 	err = filepath.Walk(dir, all.Walker)
 	if err != nil {
@@ -154,7 +94,6 @@ func asJson(pkgs ...*exports.Package) (b []byte) {
 	if err != nil {
 		panic(err.Error())
 	}
-	// fmt.Printf("%s\n", b)
 	return
 }
 
@@ -179,15 +118,6 @@ func (o *Environment) scan(dir string) (b []byte, internal bool) {
 	b = append(b, []byte("\n")...)
 	return
 }
-
-// for registry files
-//var DEP = path.Join(GOPATH, "dep.db")
-
-func dEP(gopath string) string {
-	return path.Join(gopath, dEP_DB)
-}
-
-var dEP_DB = "dep.db"
 
 /*
 func readRegisterFile(dir string, internal bool) (*exports.Package, error) {

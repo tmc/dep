@@ -1,13 +1,5 @@
 package depcore
 
-import (
-// "fmt"
-// "github.com/codegangsta/cli"
-// "github.com/metakeule/exports"
-// "os"
-// "path"
-)
-
 type ErrorCode int
 
 const (

@@ -2,6 +2,7 @@ package depcore
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	// "github.com/metakeule/dep/db"
 	"github.com/metakeule/exports"
@@ -29,7 +30,7 @@ func prepare(gopath string) {
 }
 
 func _gogetrevision(env *Environment, pkg string, rev string) {
-	err := env.goGetPackages(env.GOPATH, pkg)
+	err := env.getPackage(pkg)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -37,7 +38,7 @@ func _gogetrevision(env *Environment, pkg string, rev string) {
 	r := revision{}
 	r.VCM = "git"
 	r.Rev = rev
-	env.checkoutRevision(dir, r)
+	env.checkoutImport(dir, r)
 }
 
 func getmasterRevision(pkg string, dir string) string {
@@ -59,7 +60,7 @@ func getmasterRevision(pkg string, dir string) string {
 
 func _getWithDeps(env *Environment, pkg string, pkgRev string) (err error) {
 	_gogetrevision(env, pkg, pkgRev)
-	err = env.checkoutDependanciesByRevFile(env.GOPATH, pkg)
+	err = env.checkoutTrackedImports(pkg)
 	return
 }
 
@@ -141,7 +142,7 @@ func TestUpdate(pkg, rev string) error {
 		opt.TMPDIR = os.Getenv("DEP_TMP")
 		opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
 	*/
-	err := env.goGetPackages(env.GOPATH, pkg)
+	err := env.getPackage(pkg)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -150,8 +151,8 @@ func TestUpdate(pkg, rev string) error {
 	r := revision{}
 	r.VCM = "git"
 	r.Rev = rev
-	env.checkoutRevision(dir, r)
-	err = env.checkoutDependanciesByRevFile(env.GOPATH, pkg)
+	env.checkoutImport(dir, r)
+	err = env.checkoutTrackedImports(pkg)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -161,7 +162,7 @@ func TestUpdate(pkg, rev string) error {
 		panic(fmt.Sprintf("revision %#v not checked out for package %#v\n", rev, pkg))
 	}
 
-	depsBefore, eb := env.getDependancyRevisions(pkg)
+	depsBefore, eb := env.trackedImportRevisions(pkg)
 	if eb != nil {
 		panic(eb.Error())
 	}
@@ -178,16 +179,18 @@ func TestUpdate(pkg, rev string) error {
 			panic(err.Error())
 		}
 	*/
-	err = env.checkIntegrity()
-	if err != nil {
-		panic(err.Error())
+	conflicts, e := env.checkIntegrity()
+	if e != nil {
+		data, _ := json.MarshalIndent(conflicts, "", "  ")
+		fmt.Printf("%s\n", data)
+		panic(e.Error())
 	}
 
 	//env.mkdb()
 
 	//fmt.Println("UPDATING...")
 	// updatePackage(o, dB, pkg)
-	err = env.DB.uPdatePackage(pkg)
+	err = env.DB.updatePackage(pkg)
 	if err != nil {
 		fmt.Printf("normal error in updating package\n")
 		return err
@@ -196,7 +199,7 @@ func TestUpdate(pkg, rev string) error {
 	if r := env.getRevisionGit(env.PkgDir(pkg)); r != master {
 		return fmt.Errorf("revision after update %#v not matching master: %#v in package %#v\n", r, master, pkg)
 	}
-	depsAfter, e := env.getDependancyRevisions(pkg)
+	depsAfter, e := env.trackedImportRevisions(pkg)
 	if e != nil {
 		panic(e.Error())
 	}
