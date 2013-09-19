@@ -1,18 +1,18 @@
-package db
+package depcore
 
 import (
 	"database/sql"
 	"fmt"
 )
 
-func InsertPackages(db *DB, p []*Pkg, e []*Exp, im []*Imp) (err error) {
+func (ø *db) InsertPackages(p []*dbPkg, e []*exp, im []*imp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
 			tx.Rollback()
 		}
 	}()
-	tx, err = db.Begin()
+	tx, err = ø.Begin()
 	if err != nil {
 		return
 	}
@@ -49,7 +49,7 @@ func InsertPackages(db *DB, p []*Pkg, e []*Exp, im []*Imp) (err error) {
 	return
 }
 
-func _insertExports(tx *sql.Tx, e ...*Exp) (err error) {
+func _insertExports(tx *sql.Tx, e ...*exp) (err error) {
 	var stmt *sql.Stmt
 	stmt, err = tx.Prepare("insert or replace into exports(package, name, value) values(?, ?, ?)")
 	if err != nil {
@@ -66,14 +66,14 @@ func _insertExports(tx *sql.Tx, e ...*Exp) (err error) {
 	return
 }
 
-func InsertExports(db *DB, e ...*Exp) (err error) {
+func (ø *db) InsertExports(e ...*exp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
 			tx.Rollback()
 		}
 	}()
-	tx, err = db.Begin()
+	tx, err = ø.Begin()
 	if err != nil {
 		return
 	}
@@ -85,7 +85,7 @@ func InsertExports(db *DB, e ...*Exp) (err error) {
 	return
 }
 
-func _insertImports(tx *sql.Tx, im ...*Imp) (err error) {
+func _insertImports(tx *sql.Tx, im ...*imp) (err error) {
 	var stmt *sql.Stmt
 	stmt, err = tx.Prepare("insert or replace into imports(package, import, name, value) values(?, ?, ?, ?)")
 	if err != nil {
@@ -101,14 +101,14 @@ func _insertImports(tx *sql.Tx, im ...*Imp) (err error) {
 	return
 }
 
-func InsertImports(db *DB, im ...*Imp) (err error) {
+func (ø *db) InsertImports(im ...*imp) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
 			tx.Rollback()
 		}
 	}()
-	tx, err = db.Begin()
+	tx, err = ø.Begin()
 	if err != nil {
 		return
 	}

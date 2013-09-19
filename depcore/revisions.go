@@ -58,3 +58,33 @@ func CLIRevisions(c *cli.Context, o *Options) ErrorCode {
 	return 0
 }
 */
+
+import (
+	"encoding/json"
+	"github.com/metakeule/exports"
+	"io/ioutil"
+	"path"
+)
+
+func (o *Environment) CLIRevisions(pkg *exports.Package, includeIndirect bool) (data []byte, err error) {
+	revisions := map[string]revision{}
+	for im, _ := range pkg.ImportedPackages {
+		o.trackedImportRevisions(pkg)
+		revisions[im] = o.getRevision(o.PkgDir(im), pkg.Path)
+		if includeIndirect {
+
+			indirectRev(o, revisions, o.Pkg(im), pkg.Path)
+			continue
+		}
+	}
+
+	data, err = json.MarshalIndent(revisions, "", "  ")
+	if err != nil {
+		return
+	}
+
+	dir, _ := pkg.Dir()
+	filename := path.Join(dir, file)
+	err = ioutil.WriteFile(filename, data, 0644)
+	return
+}

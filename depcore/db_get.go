@@ -1,19 +1,19 @@
-package db
+package depcore
 
 import (
 	"database/sql"
 )
 
-func GetImported(db *DB, importedPkg string) (imps []*Imp, err error) {
+func (ø *db) GetImported(importedPkg string) (imps []*imp, err error) {
 	var rows *sql.Rows
-	imps = []*Imp{}
-	rows, err = db.Query("select package, import, name, value from imports where import = ?", importedPkg)
+	imps = []*imp{}
+	rows, err = ø.Query("select package, import, name, value from imports where import = ?", importedPkg)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		i := &Imp{}
+		i := &imp{}
 		err = rows.Scan(&i.Package, &i.Import, &i.Name, &i.Value)
 		if err != nil {
 			return
@@ -23,24 +23,24 @@ func GetImported(db *DB, importedPkg string) (imps []*Imp, err error) {
 	return
 }
 
-func GetPackage(db *DB, packagePath string, withExports bool, withImports bool) (p *Pkg, exps []*Exp, imps []*Imp, err error) {
+func (ø *db) GetPackage(packagePath string, withExports bool, withImports bool) (p *dbPkg, exps []*exp, imps []*imp, err error) {
 	var row *sql.Row
-	p = &Pkg{}
-	row = db.QueryRow("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
+	p = &dbPkg{}
+	row = ø.QueryRow("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
 	err = row.Scan(&p.Package, &p.ImportsMd5, &p.ExportsMd5, &p.InitMd5, &p.JsonMd5, &p.Json)
 	if err != nil {
 		return
 	}
 	if withExports {
 		var rows *sql.Rows
-		exps = []*Exp{}
-		rows, err = db.Query("select package, name, value from exports where package = ?", packagePath)
+		exps = []*exp{}
+		rows, err = ø.Query("select package, name, value from exports where package = ?", packagePath)
 		if err != nil {
 			return
 		}
 		defer rows.Close()
 		for rows.Next() {
-			e := &Exp{}
+			e := &exp{}
 			err = rows.Scan(&e.Package, &e.Name, &e.Value)
 			if err != nil {
 				return
@@ -51,14 +51,14 @@ func GetPackage(db *DB, packagePath string, withExports bool, withImports bool) 
 
 	if withImports {
 		var rows *sql.Rows
-		imps = []*Imp{}
-		rows, err = db.Query("select package, import, name, value from imports where package = ?", packagePath)
+		imps = []*imp{}
+		rows, err = ø.Query("select package, import, name, value from imports where package = ?", packagePath)
 		if err != nil {
 			return
 		}
 		defer rows.Close()
 		for rows.Next() {
-			i := &Imp{}
+			i := &imp{}
 			err = rows.Scan(&i.Package, &i.Import, &i.Name, &i.Value)
 			if err != nil {
 				return
@@ -69,16 +69,16 @@ func GetPackage(db *DB, packagePath string, withExports bool, withImports bool) 
 	return
 }
 
-func GetAllPackages(db *DB) (ps []*Pkg, err error) {
+func (ø *db) GetAllPackages() (ps []*dbPkg, err error) {
 	var rows *sql.Rows
-	ps = []*Pkg{}
-	rows, err = db.Query("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages")
+	ps = []*dbPkg{}
+	rows, err = ø.Query("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages")
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		p := &Pkg{}
+		p := &dbPkg{}
 		err = rows.Scan(&p.Package, &p.ImportsMd5, &p.ExportsMd5, &p.InitMd5, &p.JsonMd5, &p.Json)
 		if err != nil {
 			return
@@ -88,16 +88,16 @@ func GetAllPackages(db *DB) (ps []*Pkg, err error) {
 	return
 }
 
-func GetAllImports(db *DB) (is []*Imp, err error) {
+func (ø *db) GetAllImports() (is []*imp, err error) {
 	var rows *sql.Rows
-	is = []*Imp{}
-	rows, err = db.Query("select package, import, name, value from imports")
+	is = []*imp{}
+	rows, err = ø.Query("select package, import, name, value from imports")
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		i := &Imp{}
+		i := &imp{}
 		err = rows.Scan(&i.Package, &i.Import, &i.Name, &i.Value)
 		if err != nil {
 			return
@@ -107,16 +107,16 @@ func GetAllImports(db *DB) (is []*Imp, err error) {
 	return
 }
 
-func GetAllExports(db *DB) (es []*Exp, err error) {
+func (ø *db) GetAllExports() (es []*exp, err error) {
 	var rows *sql.Rows
-	es = []*Exp{}
-	rows, err = db.Query("select package, name, value from exports")
+	es = []*exp{}
+	rows, err = ø.Query("select package, name, value from exports")
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		e := &Exp{}
+		e := &exp{}
 		err = rows.Scan(&e.Package, &e.Name, &e.Value)
 		if err != nil {
 			return

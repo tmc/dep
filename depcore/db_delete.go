@@ -1,4 +1,4 @@
-package db
+package depcore
 
 import (
 	"database/sql"
@@ -19,14 +19,14 @@ func _deletePackage(pkgPath string, tx *sql.Tx) (err error) {
 	return
 }
 
-func DeletePackage(db *DB, pkgPath string) (err error) {
+func (ø *db) DeletePackage(pkgPath string) (err error) {
 	var tx *sql.Tx
 	defer func() {
 		if err != nil && tx != nil {
 			tx.Rollback()
 		}
 	}()
-	tx, err = db.Begin()
+	tx, err = ø.Begin()
 	if err != nil {
 		return
 	}

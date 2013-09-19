@@ -1,6 +1,6 @@
-package db
+package depcore
 
-type Pkg struct {
+type dbPkg struct {
 	Package    string
 	JsonMd5    string
 	Json       []byte
@@ -9,13 +9,13 @@ type Pkg struct {
 	InitMd5    string
 }
 
-type Exp struct {
+type exp struct {
 	Package string
 	Name    string
 	Value   string
 }
 
-type Imp struct {
+type imp struct {
 	Package string
 	Import  string
 	Name    string

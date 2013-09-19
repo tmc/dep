@@ -97,28 +97,6 @@ func asJson(pkgs ...*exports.Package) (b []byte) {
 	return
 }
 
-func (o *Environment) pkgJson(path string) (b []byte, internal bool) {
-	p := o.Pkg(path)
-	internal = p.Internal
-	var err error
-	b, err = json.MarshalIndent(p, "", "   ")
-	if err != nil {
-		panic(err.Error())
-	}
-	return
-}
-
-func (o *Environment) scan(dir string) (b []byte, internal bool) {
-	dir, err := filepath.Abs(dir)
-	if err != nil {
-		panic(err.Error())
-	}
-	//fmt.Println(dir)
-	b, internal = o.pkgJson(o.PkgPath(dir))
-	b = append(b, []byte("\n")...)
-	return
-}
-
 /*
 func readRegisterFile(dir string, internal bool) (*exports.Package, error) {
 	dir, err := filepath.Abs(dir)

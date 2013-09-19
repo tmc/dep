@@ -3,8 +3,42 @@ package depcore
 import (
 	"bytes"
 	"fmt"
+	// "github.com/metakeule/dep/db"
+	"encoding/json"
 	"github.com/metakeule/exports"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
 )
+
+func toJson(i interface{}) []byte {
+	b, err := json.MarshalIndent(i, "", "  ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return b
+}
+
+var bzrRevRe = regexp.MustCompile(`revision-id:\s*([^\s]+)`)
+
+// maps a package path to a vcs and a revision
+type revision struct {
+	VCM    string
+	Rev    string
+	Parent string
+	Tag    string // TODO check if revision is a tag and put it into the rev
+}
+
+var revFileName = "dep-rev.json"
+
+func _repoRoot(dir string) string {
+	_, root, err := vcsForDir(dir)
+	if err != nil {
+		panic("can't find repodir for " + dir + " : " + err.Error())
+	}
+	return root
+}
 
 // checks if two maps are equal
 func mapEqual(a map[string]string, b map[string]string) bool {
@@ -52,4 +86,21 @@ func packageDiff(old_ *exports.Package, new_ *exports.Package) string {
 
 	}
 	return buffer.String()
+}
+
+func getmasterRevision(pkg string, dir string) string {
+	cmd := exec.Command("git", "rev-parse", "master")
+	cmd.Env = []string{
+		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+	}
+	cmd.Dir = dir
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		panic(stdout.String() + "\n" + stderr.String())
+	}
+	return strings.Trim(stdout.String(), "\n\r")
 }

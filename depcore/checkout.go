@@ -110,7 +110,7 @@ func loadRevisions(file string) (revs map[string]revision, err error) {
 	return
 }
 
-func CLICheckout(file string, force bool, env *Environment) ErrorCode {
+func (env *Environment) CLICheckout(file string, force bool) ErrorCode {
 	revisions, err := loadRevisions(file)
 	if err != nil {
 		panic(err.Error())

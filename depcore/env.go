@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/metakeule/dep/db"
+	// "github.com/metakeule/dep/db"
 	"github.com/metakeule/exports"
 	"io/ioutil"
 	"path"
 	"path/filepath"
+	"runtime"
 	// "runtime"
 	// "time"
 	// "github.com/metakeule/cli"
@@ -19,27 +20,61 @@ import (
 
 type Environment struct {
 	*exports.Environment
-	TMPDIR string
-	DB     *DB
+	TMPDIR    string
+	DB        *db
+	tentative *tentativeEnvironment
 }
 
-func (env *Environment) NewTentative() (t *TentativEnvironment) {
-	t = &TentativEnvironment{
+func NewEnv(gopath string) (ø *Environment) {
+	ø = &Environment{}
+	ø.Environment = exports.NewEnv(runtime.GOROOT(), gopath)
+	ø.TMPDIR = os.Getenv("DEP_TMP")
+	ø.mkdb()
+	return
+}
+
+func (env *Environment) NewTentative() (t *tentativeEnvironment) {
+	if env.tentative != nil {
+		panic("can't create more than one tentative environment for the same env")
+	}
+	env.tentative = &tentativeEnvironment{
 		Original:    env,
 		Environment: NewEnv(env.mkTempDir()),
 	}
-	t.Open()
+	env.tentative.Open()
+	return env.tentative
+}
+
+func (o *Environment) pkgJson(path string) (b []byte, internal bool) {
+	p := o.Pkg(path)
+	internal = p.Internal
+	var err error
+	b, err = json.MarshalIndent(p, "", "   ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return
+}
+
+func (o *Environment) scan(dir string) (b []byte, internal bool) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		panic(err.Error())
+	}
+	//fmt.Println(dir)
+	b, internal = o.pkgJson(o.PkgPath(dir))
+	b = append(b, []byte("\n")...)
 	return
 }
 
 // TODO: get rid of it
-func (env *Environment) packageToDBFormat(pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps []*db.Exp, dbImps []*db.Imp) {
-	p := &db.Pkg{}
+func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *exports.Package) (dbExps []*exp, dbImps []*imp) {
+	p := &dbPkg{}
 	p.Package = pkg.Path
 	p.Json = asJson(pkg)
 	pkgMap[pkg.Path] = p
-	dbExps = []*db.Exp{}
-	dbImps = []*db.Imp{}
+	dbExps = []*exp{}
+	dbImps = []*imp{}
 
 	for im, _ := range pkg.ImportedPackages {
 		if _, has := pkgMap[im]; has {
@@ -54,7 +89,7 @@ func (env *Environment) packageToDBFormat(pkgMap map[string]*db.Pkg, pkg *export
 	pkgjs := pkg
 
 	for k, v := range pkgjs.Exports {
-		dbE := &db.Exp{}
+		dbE := &exp{}
 		dbE.Package = pkg.Path
 		dbE.Name = k
 		dbE.Value = v
@@ -62,7 +97,7 @@ func (env *Environment) packageToDBFormat(pkgMap map[string]*db.Pkg, pkg *export
 	}
 
 	for k, v := range pkgjs.Imports {
-		dbI := &db.Imp{}
+		dbI := &imp{}
 		dbI.Package = pkg.Path
 		arr := strings.Split(k, "#")
 		dbI.Name = arr[1]
@@ -97,6 +132,9 @@ func (o *Environment) Open() {
 func (o *Environment) Close() {
 	if o.DB != nil {
 		o.DB.Close()
+	}
+	if o.tentative != nil {
+		o.tentative.Close()
 	}
 }
 
@@ -324,17 +362,14 @@ func (env *Environment) checkoutImport(d string, rev revision) {
 func (env *Environment) mkdb() {
 	dbFile := path.Join(env.GOPATH, "dep.db")
 	_, dbFileerr := os.Stat(dbFile)
-	dB, err := db.Open(dbFile)
+	dB, err := db_open(env, dbFile)
 	if err != nil {
 		panic(err.Error())
 	}
 	if dbFileerr != nil {
-		db.CreateTables(dB)
+		dB.CreateTables()
 	}
-	d := &DB{}
-	d.Environment = env
-	d.DB = dB
-	env.DB = d
+	env.DB = dB
 }
 
 // checks the integrity of all packages
@@ -381,5 +416,23 @@ func (o *Environment) loadJson(pkgPath string) (ø *exports.Package) {
 	if err != nil {
 		panic(err.Error())
 	}
+	return
+}
+
+func (env *Environment) getRev(pkg string, rev string) {
+	err := env.getPackage(pkg)
+	if err != nil {
+		panic(err.Error())
+	}
+	dir := env.PkgDir(pkg)
+	r := revision{}
+	r.VCM = "git"
+	r.Rev = rev
+	env.checkoutImport(dir, r)
+}
+
+func (env *Environment) getWithImports(pkg string, pkgRev string) (err error) {
+	env.getRev(pkg, pkgRev)
+	err = env.checkoutTrackedImports(pkg)
 	return
 }

@@ -3,9 +3,9 @@ package depcore
 type ErrorCode int
 
 const (
-	_                           = iota
-	_                           = iota
-	ErrorGOROOTNotSet ErrorCode = iota
+	_           = iota
+	_ ErrorCode = iota
+	ErrorGOROOTNotSet
 	ErrorGOPATHNotSet
 	ErrorDEPTMPNotSet
 	ErrorGOPATHInvalid

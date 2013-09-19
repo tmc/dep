@@ -1,15 +1,16 @@
 package depcore
 
-/*
 import (
 	"bytes"
 	"fmt"
-	"github.com/metakeule/cli"
-	"github.com/metakeule/dep/db"
+	// "github.com/metakeule/cli"
+	// "github.com/metakeule/dep/db"
 	"github.com/metakeule/exports"
 	"os"
 	"os/exec"
 )
+
+/*
 
 func CLIInstall(c *cli.Context, o *Options) ErrorCode {
 	// parseGlobalFlags(c)
@@ -50,3 +51,32 @@ func CLIInstall(c *cli.Context, o *Options) ErrorCode {
 	return 0
 }
 */
+
+// TODO install it like an update in the safe tentative environment
+// and check, if there are problems, only if not, move it to the real place
+// make sure the dependancies are checked out in the right version
+func (o *Environment) CLIInstall(pkg *exports.Package, _args ...string) ErrorCode {
+	args := []string{"install"}
+	args = append(args, _args...)
+	o.Open()
+	defer o.Close()
+
+	cmd := exec.Command("go", append(args, pkg.Path)...)
+	cmd.Env = []string{
+		fmt.Sprintf(`GOPATH=%s`, o.GOPATH),
+		fmt.Sprintf(`GOROOT=%s`, o.GOROOT),
+		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		panic(stdout.String() + "\n" + stderr.String())
+	}
+	o.DB.registerPackages(pkg)
+
+	return 0
+}

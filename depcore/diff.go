@@ -1,5 +1,9 @@
 package depcore
 
+import (
+	"github.com/metakeule/exports"
+)
+
 /*
 import (
 	"fmt"
@@ -38,6 +42,46 @@ func mapDiff(_old map[string]string, _new map[string]string) (diff []string) {
 		}
 	}
 	return
+}
+
+func (o *Environment) CLIDiff(pkg *exports.Package) (diff *pkgDiff, err ErrorCode) {
+	o.Open()
+	defer o.Close()
+
+	dbpkg, exps, imps, e := o.DB.GetPackage(pkg.Path, true, true)
+	if e != nil {
+		panic("package not registered: " + pkg.Path)
+	}
+
+	js := asJson(pkg)
+
+	// TODO: check the hash instead, escp. check the exports and imports hash
+	if exports.Hash(string(js)) != exports.Hash(string(dbpkg.Json)) {
+		//__diff(a, b)
+		pkgjs := pkg
+
+		var oldExports = map[string]string{}
+
+		for _, dbExp := range exps {
+			oldExports[dbExp.Name] = dbExp.Value
+		}
+
+		pDiff := &pkgDiff{}
+		pDiff.Path = pkg.Path
+		pDiff.Exports = mapDiff(oldExports, pkgjs.Exports)
+
+		var oldImports = map[string]string{}
+
+		for _, dbImp := range imps {
+			oldImports[dbImp.Import+"#"+dbImp.Name] = dbImp.Value
+		}
+		pDiff.Imports = mapDiff(oldImports, pkgjs.Imports)
+
+		if len(pDiff.Exports) > 0 || len(pDiff.Imports) > 0 {
+			return pDiff, 0
+		}
+	}
+	return nil, 0
 }
 
 /*
