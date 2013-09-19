@@ -1,5 +1,6 @@
-package dep
+package depcore
 
+/*
 import (
 	"bytes"
 	"fmt"
@@ -10,13 +11,13 @@ import (
 	"os/exec"
 )
 
-func Get(c *cli.Context, o *Options) ErrorCode {
+func CLIGet(c *cli.Context, o *Options) ErrorCode {
 	// parseGlobalFlags(c)
 	pkgs := packages(o)
 	args := []string{"get"}
 	args = append(args, c.Args()...)
 	installed := []*exports.Package{}
-	dB, err := db.Open(DEP(o.GOPATH))
+	dB, err := db.Open(dEP(o.GOPATH))
 
 	if err != nil {
 		db.CreateTables(dB)
@@ -53,3 +54,4 @@ func Get(c *cli.Context, o *Options) ErrorCode {
 
 	return 0
 }
+*/

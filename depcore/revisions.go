@@ -1,23 +1,25 @@
-package dep
+package depcore
 
+/*
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/metakeule/cli"
+	"github.com/metakeule/exports"
 	"io/ioutil"
 	"path"
 )
 
-func Revisions(c *cli.Context, o *Options) ErrorCode {
+func CLIRevisions(c *cli.Context, o *Options) ErrorCode {
 	// parseGlobalFlags(c)
 	file := c.String("file")
 	stdout := c.Bool("stdout")
 	inclIndirect := c.Bool("include-indirect")
 	pkgs := packages(o)
-	allrevisions := map[string]Revision{}
+	allrevisions := map[string]revision{}
 
 	for _, pkg := range pkgs {
-		revisions := map[string]Revision{}
+		revisions := map[string]revision{}
 		for im, _ := range pkg.ImportedPackages {
 			revisions[im] = pkgRevision(o, path.Join(o.Env.GOPATH, "src", im), pkg.Path)
 			if inclIndirect {
@@ -55,3 +57,4 @@ func Revisions(c *cli.Context, o *Options) ErrorCode {
 	}
 	return 0
 }
+*/

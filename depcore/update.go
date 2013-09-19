@@ -1,5 +1,6 @@
-package dep
+package depcore
 
+/*
 import (
 	"encoding/json"
 	"fmt"
@@ -23,17 +24,19 @@ func _update_pkg(c *cli.Context, o *Options, dB *db.DB, pkg string, keepTemp boo
 
 	return _updatePackage(tmpDir, o, dB, pkg)
 }
+*/
 
+/*
 // TODO: checkout certain revisions if there is a dep.rev file
-func Update(c *cli.Context, o *Options) ErrorCode {
+func CLIUpdate(c *cli.Context, o *Options) ErrorCode {
 	//_, dbFileerr := os.Stat(DEP(o.GOPATH))
-	dB, err := db.Open(DEP(o.GOPATH))
+	dB, err := db.Open(dEP(o.GOPATH))
 	if err != nil {
-		err = CreateDB(o.GOPATH)
+		err = createDB(o.GOPATH)
 		if err != nil {
 			panic(err.Error())
 		}
-		dB, err = db.Open(DEP(o.GOPATH))
+		dB, err = db.Open(dEP(o.GOPATH))
 		if err != nil {
 			panic(err.Error())
 		}
@@ -41,7 +44,7 @@ func Update(c *cli.Context, o *Options) ErrorCode {
 	}
 	defer dB.Close()
 
-	err = CheckIntegrity(o, o.Env)
+	err = checkIntegrity(o, o.Env)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -60,9 +63,10 @@ func Update(c *cli.Context, o *Options) ErrorCode {
 				panic(e.Error())
 			}
 			fmt.Printf("%s\n", b)
-			return UpdateConflict
+			return ErrorUpdateConflict
 		}
 	}
 
 	return 0
 }
+*/

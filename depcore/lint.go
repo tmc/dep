@@ -1,10 +1,13 @@
-package dep
+package depcore
 
+/*
 import (
 	"github.com/metakeule/cli"
 )
 
-func Lint(c *cli.Context, o *Options) ErrorCode {
+func CLILint(c *cli.Context, o *Options) ErrorCode {
 	// parseGlobalFlags(c)
 	return 0
 }
+
+*/

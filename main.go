@@ -2,42 +2,27 @@ package main
 
 import (
 	"fmt"
-	"github.com/metakeule/dep/dep"
+	"github.com/metakeule/dep/depcore"
 	"os"
 )
 
 func init() {
 	if os.Getenv("GOROOT") == "" {
-		exit(dep.GOROOTNotSet)
+		exit(depcore.ErrorGOROOTNotSet)
 	}
 	if os.Getenv("GOPATH") == "" {
-		exit(dep.GOPATHNotSet)
+		exit(depcore.ErrorGOPATHNotSet)
 	}
-	if os.Getenv("HOME") == "" {
-		exit(dep.HOMENotSet)
+	if os.Getenv("DEP_TMP") == "" {
+		exit(depcore.ErrorDEPTMPNotSet)
 	}
 }
 
 // use it to return a specific error code
 // that may be checked from the outside programm
 // panics are handled in main
-func exit(ø dep.ErrorCode) {
-	fmt.Printf("ERROR: %s, aborting\n", ø)
-	dep.Cleanup()
+func exit(ø depcore.ErrorCode) {
+	fmt.Printf("ERROR: %s, aborting\n", ø.Error())
+	depcore.Cleanup()
 	os.Exit(int(ø))
-}
-
-func init() {
-	if os.Getenv("HOME") == "" {
-		panic("HOME environment variable not set")
-	}
-
-	if os.Getenv("GOPATH") == "" {
-		panic("GOPATH environment variable not set")
-	}
-
-	if os.Getenv("GOROOT") == "" {
-		panic("GOROOT environment variable not set")
-	}
-	//Init.Args()
 }

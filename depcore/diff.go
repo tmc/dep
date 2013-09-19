@@ -1,11 +1,13 @@
-package dep
+package depcore
 
+/*
 import (
 	"fmt"
 	"github.com/metakeule/cli"
 	"github.com/metakeule/dep/db"
 	"os"
 )
+*/
 
 type pkgDiff struct {
 	Path    string
@@ -38,10 +40,11 @@ func mapDiff(_old map[string]string, _new map[string]string) (diff []string) {
 	return
 }
 
-func Diff(c *cli.Context, o *Options) ErrorCode {
+/*
+func CLIDiff(c *cli.Context, o *Environment) ErrorCode {
 	// parseGlobalFlags(c)
-	_, dbFileerr := os.Stat(DEP(o.GOPATH))
-	dB, err := db.Open(DEP(o.GOPATH))
+	_, dbFileerr := os.Stat(dEP(o.GOPATH))
+	dB, err := db.Open(dEP(o.GOPATH))
 	if err != nil {
 		panic(err.Error())
 	}
@@ -96,3 +99,4 @@ func Diff(c *cli.Context, o *Options) ErrorCode {
 	}
 	return 0
 }
+*/

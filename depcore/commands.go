@@ -1,4 +1,4 @@
-package dep
+package depcore
 
 import (
 	"bytes"
@@ -19,7 +19,8 @@ import (
 	"strings"
 )
 
-type Options struct {
+/*
+type Options1 struct {
 	All         bool
 	Recursive   bool
 	PackagePath string
@@ -27,9 +28,80 @@ type Options struct {
 	PackageDir  string
 	GOPATH      string
 	GOROOT      string
-	HOME        string
+	TMPDIR      string
 	DEP         string
-	Env         *exports.Environment
+	Env         *Environment
+}
+*/
+
+type DB struct {
+	*db.DB
+	Environment *Environment
+}
+
+/*
+	TODO
+	- check for all packages within the repoDir
+	- check for package and all their dependancies, if
+		- their dependant packages would be fine with the new exports
+	- if all is fine, move the missing src entries to the real GOPATH and install the package
+	- if there are some conflicts, show them
+*/
+
+// TODO: add verbose flag for verbose output
+func (dB *DB) hasConflict(p *exports.Package) (errors map[string][3]string) {
+	pkg := p
+	//fmt.Printf("\n\n\n\nchecking conflict for package %#v\n", p.Path)
+	imp, err := db.GetImported(dB.DB, pkg.Path)
+	if err != nil {
+		panic(err.Error())
+	}
+	// fmt.Printf("package %s in imported from %v places\n", p.Path, len(imp))
+
+	errors = map[string][3]string{}
+
+	for _, im := range imp {
+		key := fmt.Sprintf("%s: %s", im.Package, im.Name)
+		// fmt.Printf("package %#v imports: %s\n", im.Package, im.Name)
+		if val, exists := pkg.Exports[im.Name]; exists {
+			// fmt.Printf("\n\ta: %#v\n\tb: %#v\n", val, im.Value)
+			if val != im.Value {
+				errors[key] = [3]string{"changed", im.Value, val} //fmt.Sprintf("%s will change as required from %s (was %s, would be %s)", im.Name, im.Package, im.Value, val)
+			}
+			continue
+		}
+		errors[key] = [3]string{"removed", im.Value, ""} // fmt.Sprintf("%s would be missing, required by %s", im.Name, im.Package)
+	}
+	return
+}
+
+type Environment struct {
+	*exports.Environment
+	TMPDIR string
+	DB     *DB
+}
+
+// environment during a tentative update
+type TentativEnvironment struct {
+	*Environment
+	Original *Environment
+}
+
+func (env *Environment) NewTentative() *TentativEnvironment {
+	t := &TentativEnvironment{}
+	t.Original = env
+	t.Environment = NewEnv(env.mkdirTempDir())
+	return t
+}
+
+func (tempEnv *TentativEnvironment) checkConflicts(pkg *exports.Package) (errs map[string][3]string) {
+	tempPkg := tempEnv.Pkg(pkg.Path)
+	if !tempEnv.Original.PkgExists(pkg.Path) {
+		panic(fmt.Sprintf("package %s is not installed in %s", pkg.Path, tempEnv.Original.GOPATH))
+	}
+	errs = tempEnv.DB.hasConflict(tempPkg)
+	// errs = hasConflict(dB, tempPkg)
+	return
 }
 
 var _ = fmt.Printf
@@ -53,7 +125,7 @@ func _store(c *cli.Context) ErrorCode {
 }
 */
 
-func _registerPackage(env *exports.Environment, pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps []*db.Exp, dbImps []*db.Imp) {
+func (env *Environment) _registerPackage(pkgMap map[string]*db.Pkg, pkg *exports.Package) (dbExps []*db.Exp, dbImps []*db.Imp) {
 	p := &db.Pkg{}
 	p.Package = pkg.Path
 	//fmt.Printf("registering %s\n", pkg.Path)
@@ -67,7 +139,7 @@ func _registerPackage(env *exports.Environment, pkgMap map[string]*db.Pkg, pkg *
 			continue
 		}
 		imPkg := env.Pkg(im)
-		pExp, pImp := _registerPackage(env, pkgMap, imPkg)
+		pExp, pImp := env._registerPackage(pkgMap, imPkg)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
 	}
@@ -94,9 +166,9 @@ func _registerPackage(env *exports.Environment, pkgMap map[string]*db.Pkg, pkg *
 	return
 }
 
-func CreateDB(gopath string) error {
-	_, dbFileerr := os.Stat(DEP(gopath))
-	dB, err := db.Open(DEP(gopath))
+func createDB(gopath string) error {
+	_, dbFileerr := os.Stat(dEP(gopath))
+	dB, err := db.Open(dEP(gopath))
 	if err != nil {
 		return err
 	}
@@ -108,13 +180,13 @@ func CreateDB(gopath string) error {
 	return nil
 }
 
-func registerPackages(env *exports.Environment, dB *db.DB, pkgs ...*exports.Package) {
+func (dB *DB) registerPackages(pkgs ...*exports.Package) {
 	dbExps := []*db.Exp{}
 	dbImps := []*db.Imp{}
 	pkgMap := map[string]*db.Pkg{}
 
 	for _, pkg := range pkgs {
-		pExp, pImp := _registerPackage(env, pkgMap, pkg)
+		pExp, pImp := dB.Environment._registerPackage(pkgMap, pkg)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
 	}
@@ -127,7 +199,7 @@ func registerPackages(env *exports.Environment, dB *db.DB, pkgs ...*exports.Pack
 		dbPkgs = append(dbPkgs, dbPgk)
 	}
 
-	err := db.InsertPackages(dB, dbPkgs, dbExps, dbImps)
+	err := db.InsertPackages(dB.DB, dbPkgs, dbExps, dbImps)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -147,8 +219,8 @@ func toJson(i interface{}) []byte {
 	return b
 }
 
-func mkdirTempDir(o *Options) (tmpGoPath string) {
-	depPath := path.Join(o.HOME, ".dep")
+func (o *Environment) mkdirTempDir() (tmpGoPath string) {
+	depPath := o.TMPDIR
 	fl, err := os.Stat(depPath)
 	if err != nil {
 		err = os.MkdirAll(depPath, 0755)
@@ -183,55 +255,7 @@ func mkdirTempDir(o *Options) (tmpGoPath string) {
 	return
 }
 
-/*
-	TODO
-	- check for all packages within the repoDir
-	- check for package and all their dependancies, if
-		- their dependant packages would be fine with the new exports
-	- if all is fine, move the missing src entries to the real GOPATH and install the package
-	- if there are some conflicts, show them
-*/
-
-// TODO: add verbose flag for verbose output
-func hasConflict(dB *db.DB, p *exports.Package) (errors map[string][3]string) {
-	pkg := p
-	//fmt.Printf("\n\n\n\nchecking conflict for package %#v\n", p.Path)
-	imp, err := db.GetImported(dB, pkg.Path)
-	if err != nil {
-		panic(err.Error())
-	}
-	// fmt.Printf("package %s in imported from %v places\n", p.Path, len(imp))
-
-	errors = map[string][3]string{}
-
-	for _, im := range imp {
-		key := fmt.Sprintf("%s: %s", im.Package, im.Name)
-		// fmt.Printf("package %#v imports: %s\n", im.Package, im.Name)
-		if val, exists := pkg.Exports[im.Name]; exists {
-			// fmt.Printf("\n\ta: %#v\n\tb: %#v\n", val, im.Value)
-			if val != im.Value {
-				errors[key] = [3]string{"changed", im.Value, val} //fmt.Sprintf("%s will change as required from %s (was %s, would be %s)", im.Name, im.Package, im.Value, val)
-			}
-			continue
-		}
-		errors[key] = [3]string{"removed", im.Value, ""} // fmt.Sprintf("%s would be missing, required by %s", im.Name, im.Package)
-	}
-	return
-}
-
-func checkConflicts(o *Options, dB *db.DB, tempEnv *exports.Environment, pkg *exports.Package) (errs map[string][3]string) {
-	tempPkg := tempEnv.Pkg(pkg.Path)
-	if !o.Env.PkgExists(pkg.Path) {
-		panic(fmt.Sprintf("package %s is not installed in %s", pkg.Path, o.Env.GOPATH))
-	}
-
-	// fmt.Printf("checking conflicts for db %#v\n", dB.File)
-	//registerPackages(tempEnv, dB, pkg)
-	errs = hasConflict(dB, tempPkg)
-	return
-}
-
-func runGoTest(o *Options, tmpDir string, dir string) ([]byte, error) {
+func runGoTest(o *Environment, tmpDir string, dir string) ([]byte, error) {
 	cmd := exec.Command("go", "test")
 	cmd.Env = []string{
 		fmt.Sprintf(`GOPATH=%s`, tmpDir),
@@ -267,7 +291,7 @@ bzr log -r last:1 | grep revno
 hg tip --template '{node}'
 */
 
-func getRevCmd(o *Options, dir string, c string, args ...string) string {
+func (o *Environment) getRevCmd(dir string, c string, args ...string) string {
 	cmd := exec.Command(c, args...)
 	cmd.Dir = dir
 	cmd.Env = []string{
@@ -287,18 +311,18 @@ func getRevCmd(o *Options, dir string, c string, args ...string) string {
 	return strings.Trim(stdout.String(), "\n\r")
 }
 
-func GetRevisionGit(o *Options, dir string) string {
-	return getRevCmd(o, dir, "git", "rev-parse", "HEAD")
+func (o *Environment) getRevisionGit(dir string) string {
+	return o.getRevCmd(dir, "git", "rev-parse", "HEAD")
 }
 
-func getRevisionHg(o *Options, dir string) string {
-	return getRevCmd(o, dir, "hg", "tip", "--template", "{node}")
+func (o *Environment) getRevisionHg(dir string) string {
+	return o.getRevCmd(dir, "hg", "tip", "--template", "{node}")
 }
 
 var bzrRevRe = regexp.MustCompile(`revision-id:\s*([^\s]+)`)
 
 // maps a package path to a vcs and a revision
-type Revision struct {
+type revision struct {
 	VCM    string
 	Rev    string
 	Parent string
@@ -307,13 +331,13 @@ type Revision struct {
 
 var revFileName = "dep-rev.json"
 
-func getRevisionBzr(o *Options, dir string) string {
-	res := getRevCmd(o, dir, "bzr", "log", "-l", "1", "--show-ids")
+func (o *Environment) getRevisionBzr(dir string) string {
+	res := o.getRevCmd(dir, "bzr", "log", "-l", "1", "--show-ids")
 	sm := bzrRevRe.FindAllStringSubmatch(res, 1)
 	return sm[0][1]
 }
 
-func pkgRevision(o *Options, dir string, parent string) (rev Revision) {
+func (o *Environment) pkgRevision(dir string, parent string) (rev revision) {
 	//dir := path.Join(exports.DefaultEnv.GOPATH, "src", pkgPath)
 	vcs, root, err := vcsForDir(dir)
 	if err != nil {
@@ -323,36 +347,36 @@ func pkgRevision(o *Options, dir string, parent string) (rev Revision) {
 	var r string
 	switch vcs.cmd {
 	case "git":
-		r = GetRevisionGit(o, dir)
+		r = o.getRevisionGit(dir)
 	case "hg":
-		r = getRevisionHg(o, dir)
+		r = o.getRevisionHg(dir)
 	case "bzr":
-		r = getRevisionBzr(o, dir)
+		r = o.getRevisionBzr(dir)
 	case "svn":
 		panic("svn is currently not supported")
 	default:
 		panic("unknown vcs command " + vcs.cmd)
 
 	}
-	return Revision{vcs.cmd, r, parent, ""}
+	return revision{vcs.cmd, r, parent, ""}
 }
 
-func indirectRev(o *Options, revisions map[string]Revision, pkg *exports.Package, parent string) {
+func (o *Environment) indirectRev(revisions map[string]revision, pkg *exports.Package, parent string) {
 	for im, _ := range pkg.ImportedPackages {
 		if _, has := revisions[im]; !has {
-			revisions[im] = pkgRevision(o, path.Join(o.GOPATH, "src", im), pkg.Path)
-			indirectRev(o, revisions, o.Env.Pkg(im), pkg.Path)
+			revisions[im] = o.pkgRevision(path.Join(o.GOPATH, "src", im), pkg.Path)
+			o.indirectRev(revisions, o.Pkg(im), pkg.Path)
 		}
 	}
 }
 
-func checkoutRevCmd(o *Options, dir string, c string, args ...string) error {
+func (env *Environment) checkoutRevCmd(dir string, c string, args ...string) error {
 	//fmt.Printf("running:\n\t%s %s\n in\n\t%#v\n", c, strings.Join(args, " "), dir)
 	cmd := exec.Command(c, args...)
 	cmd.Dir = dir
 	cmd.Env = []string{
-		fmt.Sprintf(`GOPATH=%s`, o.GOPATH),
-		fmt.Sprintf(`GOROOT=%s`, o.GOROOT),
+		fmt.Sprintf(`GOPATH=%s`, env.GOPATH),
+		fmt.Sprintf(`GOROOT=%s`, env.GOROOT),
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
 
@@ -368,18 +392,18 @@ func checkoutRevCmd(o *Options, dir string, c string, args ...string) error {
 	return nil
 }
 
-func checkoutBzr(o *Options, dir string, rev string) error {
+func (env *Environment) checkoutBzr(dir string, rev string) error {
 	// update -r {tag}
-	return checkoutRevCmd(o, dir, "bzr", "update", "-r", rev)
+	return env.checkoutRevCmd(dir, "bzr", "update", "-r", rev)
 }
 
-func checkoutGit(o *Options, dir string, rev string) error {
-	return checkoutRevCmd(o, dir, "git", "checkout", rev)
+func (env *Environment) checkoutGit(dir string, rev string) error {
+	return env.checkoutRevCmd(dir, "git", "checkout", rev)
 }
 
-func checkoutHg(o *Options, dir string, rev string) error {
+func (env *Environment) checkoutHg(dir string, rev string) error {
 	// update -r
-	return checkoutRevCmd(o, dir, "hg", "update", "-r", rev)
+	return env.checkoutRevCmd(dir, "hg", "update", "-r", rev)
 }
 
 func _repoRoot(dir string) string {

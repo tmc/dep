@@ -1,10 +1,9 @@
-package situation
+package depcore
 
 import (
 	"bytes"
 	"fmt"
-	"github.com/metakeule/dep/db"
-	"github.com/metakeule/dep/dep"
+	// "github.com/metakeule/dep/db"
 	"github.com/metakeule/exports"
 	"os"
 	"os/exec"
@@ -29,16 +28,16 @@ func prepare(gopath string) {
 	}
 }
 
-func _gogetrevision(o *dep.Options, pkg string, rev string) {
-	err := dep.GoGetPackages(o, o.GOPATH, pkg)
+func _gogetrevision(env *Environment, pkg string, rev string) {
+	err := env.goGetPackages(env.GOPATH, pkg)
 	if err != nil {
 		panic(err.Error())
 	}
-	dir := path.Join(o.GOPATH, "src", pkg)
-	r := dep.Revision{}
+	dir := env.PkgDir(pkg)
+	r := revision{}
 	r.VCM = "git"
 	r.Rev = rev
-	dep.CheckoutRevision(o, dir, r)
+	env.checkoutRevision(dir, r)
 }
 
 func getmasterRevision(pkg string, dir string) string {
@@ -58,33 +57,51 @@ func getmasterRevision(pkg string, dir string) string {
 	return strings.Trim(stdout.String(), "\n\r")
 }
 
-func _getWithDeps(o *dep.Options, pkg string, pkgRev string) (err error) {
-	_gogetrevision(o, pkg, pkgRev)
-	err = dep.CheckoutDependanciesByRevFile(o, o.GOPATH, pkg)
+func _getWithDeps(env *Environment, pkg string, pkgRev string) (err error) {
+	_gogetrevision(env, pkg, pkgRev)
+	err = env.checkoutDependanciesByRevFile(env.GOPATH, pkg)
 	return
 }
 
-func CleanEnv() {
-	opt := &dep.Options{}
-	gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "situation", "gopath")
-	opt.GOPATH = gopath
-	opt.GOROOT = runtime.GOROOT()
-	opt.HOME = os.Getenv("HOME")
-	opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
-	prepare(gopath)
+func NewEnv(gopath string) (ø *Environment) {
+	ø = &Environment{}
+	ø.Environment = exports.NewEnv(runtime.GOROOT(), gopath)
+	ø.TMPDIR = os.Getenv("DEP_TMP")
+	ø.mkdb()
+	return
+}
+
+func newTestEnv() *Environment {
+	return NewEnv(path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "gopath"))
+}
+
+func TestCleanup() {
+	/*
+		opt := &Options{}
+		gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "gopath")
+		opt.GOPATH = gopath
+		opt.GOROOT = runtime.GOROOT()
+		opt.TMPDIR = os.Getenv("DEP_TMP")
+		opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
+	*/
+	env := newTestEnv()
+	prepare(env.GOPATH)
 }
 
 // go get the given revision of the given package
 // with its dependancies
-func GetPackage(pkg, rev string) error {
-	opt := &dep.Options{}
-	gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "situation", "gopath")
-	opt.GOPATH = gopath
-	opt.GOROOT = runtime.GOROOT()
-	opt.HOME = os.Getenv("HOME")
-	opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
-	//prepare(gopath)
-	return _getWithDeps(opt, pkg, rev)
+func TestGet(pkg, rev string) error {
+	env := newTestEnv()
+	/*
+		opt := &Options{}
+		gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "gopath")
+		opt.GOPATH = gopath
+		opt.GOROOT = runtime.GOROOT()
+		opt.TMPDIR = os.Getenv("DEP_TMP")
+		opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
+		//prepare(gopath)
+	*/
+	return _getWithDeps(env, pkg, rev)
 }
 
 /*
@@ -106,89 +123,86 @@ func GetPackage(pkg, rev string) error {
 // dependancies are checkout as defined in the dep-rev.json of the initial rev of pkg
 // After the update, it will be checked, if
 // the target revisions as defined in the dep-rev.json of the master of pkg have been updated
-func Update(pkg, rev string) error {
-	opt := &dep.Options{}
-	gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "situation", "gopath")
+func TestUpdate(pkg, rev string) error {
+	env := newTestEnv()
+	// opt := &Options{}
+
+	// gopath := path.Join(os.Getenv("GOPATH"), "src", "github.com", "metakeule", "dep", "gopath")
 	//prepare(gopath)
 
 	/*
-		defer func() {
-			os.RemoveAll(gopath)
-		}()
+	   defer func() {
+	       os.RemoveAll(gopath)
+	   }()
 	*/
-
-	opt.GOPATH = gopath
-	opt.GOROOT = runtime.GOROOT()
-	opt.HOME = os.Getenv("HOME")
-	opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
-
-	err := dep.GoGetPackages(opt, opt.GOPATH, pkg)
+	/*
+		opt.GOPATH = gopath
+		opt.GOROOT = runtime.GOROOT()
+		opt.TMPDIR = os.Getenv("DEP_TMP")
+		opt.Env = exports.NewEnv(opt.GOROOT, opt.GOPATH)
+	*/
+	err := env.goGetPackages(env.GOPATH, pkg)
 	if err != nil {
 		panic(err.Error())
 	}
-	dir := path.Join(opt.GOPATH, "src", pkg)
+	dir := path.Join(env.GOPATH, "src", pkg)
 	master := getmasterRevision(pkg, dir)
-	r := dep.Revision{}
+	r := revision{}
 	r.VCM = "git"
 	r.Rev = rev
-	dep.CheckoutRevision(opt, dir, r)
-	err = dep.CheckoutDependanciesByRevFile(opt, opt.GOPATH, pkg)
+	env.checkoutRevision(dir, r)
+	err = env.checkoutDependanciesByRevFile(env.GOPATH, pkg)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	// check, if revisions are correct
-	if dep.GetRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)) != rev {
+	if env.getRevisionGit(path.Join(env.GOPATH, "src", pkg)) != rev {
 		panic(fmt.Sprintf("revision %#v not checked out for package %#v\n", rev, pkg))
 	}
 
-	depsBefore, eb := dep.GetDependancyRevisions(opt.GOPATH, pkg)
+	depsBefore, eb := env.getDependancyRevisions(pkg)
 	if eb != nil {
 		panic(eb.Error())
 	}
 
 	for d, drev := range depsBefore {
-		if r := dep.GetRevisionGit(opt, path.Join(opt.GOPATH, "src", d)); r != drev.Rev {
+		if r := env.getRevisionGit(path.Join(env.GOPATH, "src", d)); r != drev.Rev {
 			panic(fmt.Sprintf("revision before update %#v not checked out, expected: %#v for dependancy package %#v\n", r, drev.Rev, d))
 		}
 	}
 
-	err = dep.CreateDB(opt.GOPATH)
-
+	//err = createDB(env.GOPATH)
+	/*
+		if err != nil {
+			panic(err.Error())
+		}
+	*/
+	err = env.checkIntegrity()
 	if err != nil {
 		panic(err.Error())
 	}
 
-	err = dep.CheckIntegrity(opt, opt.Env)
-	if err != nil {
-		panic(err.Error())
-	}
+	//env.mkdb()
 
-	var dB *db.DB
-
-	dB, err = db.Open(dep.DEP(opt.GOPATH))
-	if err != nil {
-		panic(err.Error())
-	}
-	defer dB.Close()
 	//fmt.Println("UPDATING...")
 	// updatePackage(o, dB, pkg)
-	err = dep.UpdatePackage(opt, dB, pkg)
+	err = env.DB.uPdatePackage(pkg)
 	if err != nil {
-		//	fmt.Printf("normal error in updating package\n")
+		fmt.Printf("normal error in updating package\n")
 		return err
 	}
 
-	if r := dep.GetRevisionGit(opt, path.Join(opt.GOPATH, "src", pkg)); r != master {
+	if r := env.getRevisionGit(env.PkgDir(pkg)); r != master {
 		return fmt.Errorf("revision after update %#v not matching master: %#v in package %#v\n", r, master, pkg)
 	}
-	depsAfter, e := dep.GetDependancyRevisions(opt.GOPATH, pkg)
+	depsAfter, e := env.getDependancyRevisions(pkg)
 	if e != nil {
 		panic(e.Error())
 	}
 
 	for d, drev := range depsAfter {
-		if r := dep.GetRevisionGit(opt, path.Join(opt.GOPATH, "src", d)); r != drev.Rev {
+		if r := env.getRevisionGit(path.Join(env.GOPATH, "src", d)); r != drev.Rev {
 			return fmt.Errorf("revision after update %#v not matching expected: %#v for dependancy package %#v\n", r, drev.Rev, d)
 		}
 	}

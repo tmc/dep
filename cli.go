@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/metakeule/cli"
-	"github.com/metakeule/dep/dep"
+	"github.com/metakeule/dep/depcore"
 	"github.com/metakeule/exports"
 	"os"
 	"path"
@@ -13,7 +13,7 @@ import (
 
 var app = cli.NewApp()
 
-func action(fn func(*cli.Context, *dep.Options) dep.ErrorCode) func(c *cli.Context) {
+func action(fn func(*cli.Context, *depcore.Options) depcore.ErrorCode) func(c *cli.Context) {
 	return func(c *cli.Context) {
 		parseGlobalFlags(c)
 		// panics are handled in main
@@ -95,28 +95,28 @@ func parseGlobalFlags(c *cli.Context) {
 	return
 }
 
-var options *dep.Options
+var options *depcore.Options
 
 func init() {
-	options = &dep.Options{}
-	options.HOME = os.Getenv("HOME")
+	options = &depcore.Options{}
+	options.TMPDIR = os.Getenv("DEP_TMP")
 	options.GOPATH = os.Getenv("GOPATH")
 	options.GOROOT = runtime.GOROOT()
 	options.Env = exports.NewEnv(runtime.GOROOT(), options.GOPATH)
 
-	ErrorCodeInfos[dep.GOROOTNotSet] = "$GOROOT environment variable is not set"
-	ErrorCodeInfos[dep.GOPATHNotSet] = "$GOPATH environment variable is not set"
-	ErrorCodeInfos[dep.HOMENotSet] = "$HOME environment variable is not set"
-	ErrorCodeInfos[dep.GOPATHInvalid] = fmt.Sprintf("$GOPATH directory %s is not conforming to the standard layout (bin,pkg,src directories)", options.GOPATH)
-	ErrorCodeInfos[dep.InvalidOptions] = "given options are invalid"
-	ErrorCodeInfos[dep.PackageInternal] = fmt.Sprintf("package %s is internal", options.PackagePath)
-	ErrorCodeInfos[dep.PackageInvalid] = fmt.Sprintf("package %s is invalid", options.PackagePath)
-	ErrorCodeInfos[dep.PackageNotInGOPATH] = fmt.Sprintf("package not in $GOPATH directory %s", options.GOPATH)
-	ErrorCodeInfos[dep.DirNotAPackage] = fmt.Sprintf("directory %s is not a package", options.PackageDir)
-	ErrorCodeInfos[dep.DependancyNotInPackageDir] = fmt.Sprintf("dep files not in package %s", options.PackagePath)
-	ErrorCodeInfos[dep.DependancyNotInGOPATH] = fmt.Sprintf("dep files not in $GOPATH/dep directory %s", path.Join(options.GOPATH, "dep"))
-	ErrorCodeInfos[dep.DependancyInfosCorrupt] = fmt.Sprintf("dep infos are corrupt for package  %s", options.PackagePath)
-	ErrorCodeInfos[dep.UpdateConflict] = "update conflict"
+	depcore.ErrorCodeInfos[depcore.ErrorGOROOTNotSet] = "$GOROOT environment variable is not set"
+	depcore.ErrorCodeInfos[depcore.ErrorGOPATHNotSet] = "$GOPATH environment variable is not set"
+	depcore.ErrorCodeInfos[depcore.ErrorDEPTMPNotSet] = "$DEP_TMP environment variable is not set"
+	depcore.ErrorCodeInfos[depcore.ErrorGOPATHInvalid] = fmt.Sprintf("$GOPATH directory %s is not conforming to the standard layout (bin,pkg,src directories)", options.GOPATH)
+	depcore.ErrorCodeInfos[depcore.ErrorInvalidOptions] = "given options are invalid"
+	depcore.ErrorCodeInfos[depcore.ErrorPackageInternal] = fmt.Sprintf("package %s is internal", options.PackagePath)
+	depcore.ErrorCodeInfos[depcore.ErrorPackageInvalid] = fmt.Sprintf("package %s is invalid", options.PackagePath)
+	depcore.ErrorCodeInfos[depcore.ErrorPackageNotInGOPATH] = fmt.Sprintf("package not in $GOPATH directory %s", options.GOPATH)
+	depcore.ErrorCodeInfos[depcore.ErrorDirNotAPackage] = fmt.Sprintf("directory %s is not a package", options.PackageDir)
+	depcore.ErrorCodeInfos[depcore.ErrorDependancyNotInPackageDir] = fmt.Sprintf("dep files not in package %s", options.PackagePath)
+	depcore.ErrorCodeInfos[depcore.ErrorDependancyNotInGOPATH] = fmt.Sprintf("dep files not in $GOPATH/dep directory %s", path.Join(options.GOPATH, "dep"))
+	depcore.ErrorCodeInfos[depcore.ErrorDependancyInfosCorrupt] = fmt.Sprintf("dep infos are corrupt for package  %s", options.PackagePath)
+	depcore.ErrorCodeInfos[depcore.ErrorUpdateConflict] = "update conflict"
 
 	app.Name = "dep"
 	app.Usage = "manage go package dependancies via imports and exports"
@@ -130,7 +130,7 @@ func init() {
 		/*
 			{
 				Name:        "store",
-				Usage:       "writes dependancies to $GOPATH/src/[package]/dep.json",
+				Usage:       "writes dependancies to $GOPATH/src/[package]/depcore.json",
 				Description: furtherInformation,
 				Action:      action(_store),
 				Flags:       globalFlags,
@@ -141,42 +141,42 @@ func init() {
 			Usage:       "shows violations of the best practices $GOPATH/src/[package]",
 			Description: furtherInformation,
 			Flags:       globalFlags,
-			Action:      action(dep.Lint),
+			Action:      action(depcore.CLILint),
 		},
 		{
 			Name:        "show",
 			Usage:       "shows the dependancies of $GOPATH/src/[package]",
 			Description: furtherInformation,
 			Flags:       globalFlags,
-			Action:      action(dep.Show),
+			Action:      action(depcore.CLIShow),
 		},
 		{
 			Name:        "register",
 			Usage:       "registers the dependancies in $GOPATH/dep.db",
 			Description: furtherInformation,
 			Flags:       globalFlags,
-			Action:      action(dep.Register),
+			Action:      action(depcore.CLIRegister),
 		},
 		{
 			Name:        "get",
 			Usage:       "get a go package and register it",
 			Description: "passes all arguments to 'go get', see 'go help get'",
-			Action:      action(dep.Get),
+			Action:      action(depcore.CLIGet),
 		},
 		{
 			Name:        "install",
 			Usage:       "installs a go package and register it",
 			Description: "passes all arguments to 'go install', see 'go help get'",
-			Action:      action(dep.Install),
+			Action:      action(depcore.CLIInstall),
 		},
 		{
 			Name:        "diff",
-			Usage:       "shows the differences of current dependacies to the registered dependancies in $GOPATH/dep.db",
+			Usage:       "shows the differences of current dependacies to the registered dependancies in $GOPATH/depcore.db",
 			Description: furtherInformation,
 			Flags: append(globalFlags,
-				cli.BoolFlag{"local", "compare with the local dependancies in $GOPATH/src/[package]/dep.json"},
+				cli.BoolFlag{"local", "compare with the local dependancies in $GOPATH/src/[package]/depcore.json"},
 			),
-			Action: action(dep.Diff),
+			Action: action(depcore.CLIDiff),
 		},
 		{
 			Name:        "update",
@@ -190,7 +190,7 @@ func init() {
 				cli.BoolFlag{"diff", "do not install the update, merily show the possible incompatible differences"},
 				cli.BoolFlag{"keep-temp-gopath", "keep the temporary GOPATH for inspection"},
 			),
-			Action: action(dep.Update),
+			Action: action(depcore.CLIUpdate),
 		},
 		{
 			Name:  "revisions",
@@ -201,7 +201,7 @@ func init() {
 				cli.BoolFlag{"include-indirect", "include indirect dependancies (e.g. depencancies of dependancies"},
 			),
 			Description: furtherInformation,
-			Action:      action(dep.Revisions),
+			Action:      action(depcore.CLIRevisions),
 		},
 		{
 			Name:        "checkout",
@@ -211,7 +211,7 @@ func init() {
 				cli.StringFlag{"file", "./dep-rev.json", "the file with the definitions of the revisions, must be the format returned by 'dep checkout'"},
 				cli.BoolFlag{"force", "also checkout packages that are already installed"},
 			},
-			Action: action(dep.Checkout),
+			Action: action(depcore.CLICheckout),
 		},
 		/*
 			{

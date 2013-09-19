@@ -1,12 +1,14 @@
-package dep
+package depcore
 
+/*
 import (
 	"fmt"
 	"github.com/metakeule/cli"
 )
 
-func Show(c *cli.Context, o *Options) ErrorCode {
+func CLIShow(c *cli.Context, o *Options) ErrorCode {
 	// parseGlobalFlags(c)
 	fmt.Printf("%s\n", asJson(packages(o)...))
 	return 0
 }
+*/

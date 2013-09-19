@@ -1,4 +1,4 @@
-package dep
+package depcore
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 	//	"io"
 	// "go/parser"
 	// "go/token"
-	"io/ioutil"
+	// "io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -99,6 +99,22 @@ func parseMetaGoImports(r io.Reader) (imports []metaImport) {
 
 /* End Of stolen from go1.1/src/cmd/go/main.go */
 
+// return subpackages of the not internal given package
+func SubPackages(pkg *exports.Package) (subs []*exports.Package, err error) {
+	subs = []*exports.Package{}
+	all := newAllPkgParser(pkg.Env)
+	dir, _ := pkg.Dir()
+	err = filepath.Walk(dir, all.Walker)
+	if err != nil {
+		return
+	}
+	for pPath, _ := range all.packages {
+		subs = append(subs, pkg.Env.Pkg(pPath))
+	}
+	return
+}
+
+/*
 func packages(o *Options) (a []*exports.Package) {
 	a = []*exports.Package{}
 	//prs := &allPkgParser{map[string]bool{}}
@@ -130,6 +146,7 @@ func packages(o *Options) (a []*exports.Package) {
 	}
 	return
 }
+*/
 
 func asJson(pkgs ...*exports.Package) (b []byte) {
 	var err error
@@ -141,8 +158,8 @@ func asJson(pkgs ...*exports.Package) (b []byte) {
 	return
 }
 
-func pkgJson(o *Options, path string) (b []byte, internal bool) {
-	p := o.Env.Pkg(path)
+func (o *Environment) pkgJson(path string) (b []byte, internal bool) {
+	p := o.Pkg(path)
 	internal = p.Internal
 	var err error
 	b, err = json.MarshalIndent(p, "", "   ")
@@ -152,13 +169,13 @@ func pkgJson(o *Options, path string) (b []byte, internal bool) {
 	return
 }
 
-func scan(o *Options, dir string) (b []byte, internal bool) {
+func (o *Environment) scan(dir string) (b []byte, internal bool) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		panic(err.Error())
 	}
 	//fmt.Println(dir)
-	b, internal = pkgJson(o, o.Env.PkgPath(dir))
+	b, internal = o.pkgJson(o.PkgPath(dir))
 	b = append(b, []byte("\n")...)
 	return
 }
@@ -166,11 +183,11 @@ func scan(o *Options, dir string) (b []byte, internal bool) {
 // for registry files
 //var DEP = path.Join(GOPATH, "dep.db")
 
-func DEP(gopath string) string {
-	return path.Join(gopath, DEP_DB)
+func dEP(gopath string) string {
+	return path.Join(gopath, dEP_DB)
 }
 
-var DEP_DB = "dep.db"
+var dEP_DB = "dep.db"
 
 /*
 func readRegisterFile(dir string, internal bool) (*exports.Package, error) {
@@ -229,9 +246,11 @@ func writeRegisterFile(dir string, data []byte, internal bool) error {
 	return ioutil.WriteFile(file, []byte(chk), 0644)
 }
 */
+/*
 func writeDepFile(dir string, data []byte) error {
 	file := path.Join(dir, "dep.json")
 	f, _ := filepath.Abs(file)
 	fmt.Printf("writing %s\n", f)
 	return ioutil.WriteFile(file, data, 0644)
 }
+*/

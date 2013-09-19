@@ -1,4 +1,4 @@
-package dep
+package depcore
 
 import (
 	"bytes"
@@ -10,28 +10,28 @@ import (
 	"path/filepath"
 )
 
-func getJson(o *Options, pkg string) string {
-	b, err := json.Marshal(o.Env.Pkg(pkg))
+func (o *Environment) getJson(pkg string) string {
+	b, err := json.Marshal(o.Pkg(pkg))
 	if err != nil {
 		panic(err.Error())
 	}
 	return string(b)
 }
 
-func loadJson(pkgPath string, o *Options) (ø *exports.Package) {
+func (o *Environment) loadJson(pkgPath string) (ø *exports.Package) {
 	file, _ := filepath.Abs(path.Join(o.GOPATH, "src", pkgPath, "dep.json"))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err.Error())
 	}
-	ø, err = o.Env.LoadJson(data)
+	ø, err = o.LoadJson(data)
 	if err != nil {
 		panic(err.Error())
 	}
 	return
 }
 
-func MapEqual(a map[string]string, b map[string]string) bool {
+func mapEqual(a map[string]string, b map[string]string) bool {
 
 	for k, v := range a {
 		if v != b[k] {
@@ -59,7 +59,7 @@ func packageDiff(old_ *exports.Package, new_ *exports.Package) string {
 				new_.Path))
 	}
 
-	if !MapEqual(old_.Exports, new_.Exports) {
+	if !mapEqual(old_.Exports, new_.Exports) {
 
 		visited := map[string]bool{}
 		for old_key, old_val := range old_.Exports {
