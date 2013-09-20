@@ -1,5 +1,6 @@
 package depcore
 
+/*
 import (
 	"bytes"
 	_ "code.google.com/p/go.exp/inotify"
@@ -13,7 +14,7 @@ import (
 	"os/exec"
 	// "path"
 )
-
+*/
 // looks for revisions in the given file and checks out the
 // packages that are not already installed
 // TODO: we need to check for the repo of a package and control,
@@ -99,6 +100,7 @@ func CLICheckout(c *cli.Context, o *Options) ErrorCode {
 }
 */
 
+/*
 func loadRevisions(file string) (revs map[string]revision, err error) {
 	revs = map[string]revision{}
 	var data []byte
@@ -110,7 +112,7 @@ func loadRevisions(file string) (revs map[string]revision, err error) {
 	return
 }
 
-func (env *Environment) CLICheckout(file string, force bool) ErrorCode {
+func (env *Environment) CLICheckout(file string, force bool) error {
 	revisions, err := loadRevisions(file)
 	if err != nil {
 		panic(err.Error())
@@ -176,5 +178,6 @@ func (env *Environment) CLICheckout(file string, force bool) ErrorCode {
 			}
 		}
 	}
-	return 0
+	return nil
 }
+*/

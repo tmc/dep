@@ -21,11 +21,14 @@ import (
 type Environment struct {
 	*exports.Environment
 	TMPDIR    string
-	DB        *db
+	db        *db
 	tentative *tentativeEnvironment
 }
 
 func NewEnv(gopath string) (ø *Environment) {
+	if gopath == "" {
+		panic("can't create environment for empty GOPATH")
+	}
 	ø = &Environment{}
 	ø.Environment = exports.NewEnv(runtime.GOROOT(), gopath)
 	ø.TMPDIR = os.Getenv("DEP_TMP")
@@ -33,7 +36,7 @@ func NewEnv(gopath string) (ø *Environment) {
 	return
 }
 
-func (env *Environment) NewTentative() (t *tentativeEnvironment) {
+func (env *Environment) newTentative() (t *tentativeEnvironment) {
 	if env.tentative != nil {
 		panic("can't create more than one tentative environment for the same env")
 	}
@@ -130,8 +133,8 @@ func (o *Environment) Open() {
 
 // close an environment
 func (o *Environment) Close() {
-	if o.DB != nil {
-		o.DB.Close()
+	if o.db != nil {
+		o.db.Close()
 	}
 	if o.tentative != nil {
 		o.tentative.Close()
@@ -369,7 +372,7 @@ func (env *Environment) mkdb() {
 	if dbFileerr != nil {
 		dB.CreateTables()
 	}
-	env.DB = dB
+	env.db = dB
 }
 
 // checks the integrity of all packages
@@ -379,9 +382,9 @@ func (env *Environment) checkIntegrity() (conflicts map[string]map[string][3]str
 	conflicts = map[string]map[string][3]string{}
 
 	ps := env.allPackages()
-	env.DB.registerPackages(ps...)
+	env.db.registerPackages(ps...)
 	for _, p := range ps {
-		errs := env.DB.hasConflict(p)
+		errs := env.db.hasConflict(p)
 		if len(errs) > 0 {
 			conflicts[p.Path] = errs
 		}

@@ -13,11 +13,13 @@ func CLIShow(c *cli.Context, o *Options) ErrorCode {
 }
 */
 
+/*
 import (
 	"fmt"
 	"github.com/metakeule/exports"
 )
 
-func (env *Environment) CLIShow(pkgs ...*exports.Package) string {
-	return fmt.Sprintf("%s\n", asJson(pkgs...))
+func (env *Environment) Json(pkgs *exports.Package) string {
+	return fmt.Sprintf("%s\n", asJson(pkgs))
 }
+*/

@@ -181,7 +181,7 @@ func (dB *db) registerPackages(pkgs ...*exports.Package) {
 }
 
 func (dB *db) updatePackage(pkg string) error {
-	tentative := dB.Environment.NewTentative()
+	tentative := dB.Environment.newTentative()
 	conflicts, err := tentative.updatePackage(pkg)
 
 	if err != nil {

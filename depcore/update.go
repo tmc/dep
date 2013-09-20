@@ -79,7 +79,7 @@ import (
 )
 
 // keepToPath is the name under which tentative GOPATH is saved
-func (o *Environment) CLIUpdate(pkg *exports.Package, keepToPath string) (conflicts map[string]map[string][3]string, err error) {
+func (o *Environment) Update(pkg *exports.Package, keepToPath string) (conflicts map[string]map[string][3]string, err error) {
 	o.Open()
 	defer o.Close()
 
@@ -88,7 +88,7 @@ func (o *Environment) CLIUpdate(pkg *exports.Package, keepToPath string) (confli
 		return
 	}
 
-	t := o.NewTentative()
+	t := o.newTentative()
 	conflicts, err = t.updatePackage(pkg.Path)
 
 	if keepToPath != "" && err != nil {

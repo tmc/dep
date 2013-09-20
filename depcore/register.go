@@ -44,9 +44,9 @@ func getDB(gopath string) *db.DB {
 }
 */
 
-func (env *Environment) CLIRegister(pkg *exports.Package) ErrorCode {
+func (env *Environment) Register(pkg *exports.Package) error {
 	// dB := getDB(env.GOPATH)
 	env.mkdb()
-	env.DB.registerPackages(pkg)
-	return 0
+	env.db.registerPackages(pkg)
+	return nil
 }

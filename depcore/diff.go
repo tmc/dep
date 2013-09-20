@@ -44,11 +44,11 @@ func mapDiff(_old map[string]string, _new map[string]string) (diff []string) {
 	return
 }
 
-func (o *Environment) CLIDiff(pkg *exports.Package) (diff *pkgDiff, err ErrorCode) {
+func (o *Environment) Diff(pkg *exports.Package) (diff *pkgDiff, err error) {
 	o.Open()
 	defer o.Close()
 
-	dbpkg, exps, imps, e := o.DB.GetPackage(pkg.Path, true, true)
+	dbpkg, exps, imps, e := o.db.GetPackage(pkg.Path, true, true)
 	if e != nil {
 		panic("package not registered: " + pkg.Path)
 	}
@@ -78,10 +78,10 @@ func (o *Environment) CLIDiff(pkg *exports.Package) (diff *pkgDiff, err ErrorCod
 		pDiff.Imports = mapDiff(oldImports, pkgjs.Imports)
 
 		if len(pDiff.Exports) > 0 || len(pDiff.Imports) > 0 {
-			return pDiff, 0
+			return pDiff, nil
 		}
 	}
-	return nil, 0
+	return nil, nil
 }
 
 /*

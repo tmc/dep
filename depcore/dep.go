@@ -3,7 +3,6 @@ package depcore
 import (
 	"encoding/json"
 	"github.com/metakeule/exports"
-	_ "github.com/metakeule/goh4"
 	"go/build"
 	//	"io"
 	// "go/parser"

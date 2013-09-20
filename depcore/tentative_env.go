@@ -18,7 +18,7 @@ func (tent *tentativeEnvironment) checkConflicts(pkgPath string) (errs map[strin
 	if !tent.Original.PkgExists(pkgPath) {
 		panic(fmt.Sprintf("package %s is not installed in %s/src", pkgPath, tent.Original.GOPATH))
 	}
-	return tent.Original.DB.hasConflict(tent.Pkg(pkgPath))
+	return tent.Original.db.hasConflict(tent.Pkg(pkgPath))
 }
 
 // closes db and remove the temporary gopath

@@ -67,7 +67,7 @@ import (
 // TODO install it like an update in the safe tentative environment
 // and check, if there are problems, only if not, move it to the real place
 // make sure the dependancies are checked out in the right version
-func (o *Environment) CLIGet(pkg *exports.Package, _args ...string) ErrorCode {
+func (o *Environment) Get(pkg *exports.Package, _args ...string) error {
 	args := []string{"get"}
 	args = append(args, _args...)
 	o.Open()
@@ -75,7 +75,7 @@ func (o *Environment) CLIGet(pkg *exports.Package, _args ...string) ErrorCode {
 
 	if o.PkgExists(pkg.Path) {
 		fmt.Printf("package %s is already installed, skipping\n", pkg.Path)
-		return 0
+		return nil
 	}
 
 	cmd := exec.Command("go", append(args, pkg.Path)...)
@@ -93,7 +93,7 @@ func (o *Environment) CLIGet(pkg *exports.Package, _args ...string) ErrorCode {
 	if err != nil {
 		panic(stdout.String() + "\n" + stderr.String())
 	}
-	o.DB.registerPackages(pkg)
+	o.db.registerPackages(pkg)
 
-	return 0
+	return nil
 }

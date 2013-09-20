@@ -1,31 +1,19 @@
 {
-  "code.google.com/p/go.exp/inotify": {
-    "VCM": "hg",
-    "Rev": "c88b16b74279a23234ddceeda8d1eb200b4442de",
+  "github.com/mattn/go-sqlite3": {
+    "VCM": "git",
+    "Rev": "73ea0ad09f1ffc09c0a4f9a41923d676c60f1624",
     "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   },
-  "github.com/metakeule/dep/db": {
+  "github.com/metakeule/dbwrap": {
     "VCM": "git",
-    "Rev": "31885dd077aa714a7ca3e024c7104742bf61d4c6",
+    "Rev": "49c58c5a3a12c01bf3cb91db0f7e6fc94329fec8",
     "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   },
   "github.com/metakeule/exports": {
     "VCM": "git",
-    "Rev": "e10869cccc19bb52188b30df6735fae39e229fe6",
-    "Parent": "github.com/metakeule/dep/depcore",
-    "Tag": ""
-  },
-  "github.com/metakeule/goh4": {
-    "VCM": "git",
-    "Rev": "de8d0f328aae529609a395247813ae53f5f40fac",
-    "Parent": "github.com/metakeule/dep/depcore",
-    "Tag": ""
-  },
-  "launchpad.net/goamz/aws": {
-    "VCM": "bzr",
-    "Rev": "gustavo@niemeyer.net-20130302025623-vhn97ad46nln0840",
+    "Rev": "8076d65ddb98337bf247b1b9360d655214a22ef7",
     "Parent": "github.com/metakeule/dep/depcore",
     "Tag": ""
   }
