@@ -79,7 +79,6 @@ func (ø *db) CreateTables() {
 	// fmt.Printf("CREATE TABLES FOR %s\n", db.File)
 	var err error
 	sqls := []string{
-		"create table foo (id integer not null primary key, name text)",
 		`
         create table packages (
             package         text not null primary key,
@@ -171,7 +170,7 @@ func (dB *db) hasConflict(pkg *exports.Package) (errors map[string][3]string) {
 		return
 	}
 	for _, im := range imp {
-		key := fmt.Sprintf("%s: %s", im.Package, im.Name)
+		key := fmt.Sprintf("%s:%s", im.Package, im.Name)
 		if val, exists := pkg.Exports[im.Name]; exists {
 			if val != im.Value {
 				errors[key] = [3]string{"changed", im.Value, val}
@@ -184,7 +183,7 @@ func (dB *db) hasConflict(pkg *exports.Package) (errors map[string][3]string) {
 	return
 }
 
-func (dB *db) registerPackages(pkgs ...*exports.Package) {
+func (dB *db) registerPackages(includeImported bool, pkgs ...*exports.Package) {
 	dbExps := []*exp{}
 	dbImps := []*imp{}
 	pkgMap := map[string]*dbPkg{}
@@ -193,7 +192,7 @@ func (dB *db) registerPackages(pkgs ...*exports.Package) {
 		if DEBUG {
 			fmt.Printf("register package %s\n", pkg.Path)
 		}
-		pExp, pImp := dB.Environment.packageToDBFormat(pkgMap, pkg)
+		pExp, pImp := dB.Environment.packageToDBFormat(pkgMap, pkg, includeImported)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
 	}

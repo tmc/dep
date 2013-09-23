@@ -117,7 +117,7 @@ func NewTestEnv() *testEnv {
 				"github.com",
 				"metakeule",
 				"dep",
-				"example"))}
+				"gopath"))}
 	t.prepare()
 	return t
 }

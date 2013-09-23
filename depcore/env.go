@@ -23,8 +23,10 @@ type Environment struct {
 	TMPDIR     string
 	db         *db
 	tentative  *tentativeEnvironment
-	ignorePkgs map[string]bool
+	IgnorePkgs map[string]bool
 }
+
+//var P = "huho"
 
 func NewEnv(gopath string) (ø *Environment) {
 	if gopath == "" {
@@ -34,7 +36,7 @@ func NewEnv(gopath string) (ø *Environment) {
 	ø.Environment = exports.NewEnv(runtime.GOROOT(), gopath)
 	ø.TMPDIR = os.Getenv("DEP_TMP")
 	ø.mkdb()
-	ø.ignorePkgs = map[string]bool{}
+	ø.IgnorePkgs = map[string]bool{}
 	ign, e := ioutil.ReadFile(filepath.Join(gopath, ".depignore"))
 	if e != nil {
 		return
@@ -42,14 +44,14 @@ func NewEnv(gopath string) (ø *Environment) {
 	lines := bytes.Split(ign, []byte("\n"))
 
 	for _, line := range lines {
-		ø.ignorePkgs[string(line)] = true
+		ø.IgnorePkgs[string(line)] = true
 	}
 
 	return
 }
 
 func (env *Environment) shouldIgnorePkg(pkg string) bool {
-	return env.ignorePkgs[pkg]
+	return env.IgnorePkgs[pkg]
 }
 
 func (env *Environment) newTentative() (t *tentativeEnvironment) {
@@ -93,7 +95,7 @@ func (o *Environment) scan(dir string) (b []byte, internal bool) {
 }
 
 // TODO: get rid of it
-func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *exports.Package) (dbExps []*exp, dbImps []*imp) {
+func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *exports.Package, includeImported bool) (dbExps []*exp, dbImps []*imp) {
 	p := &dbPkg{}
 	p.Package = pkg.Path
 	p.Json = asJson(pkg)
@@ -101,17 +103,19 @@ func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *exports
 	dbExps = []*exp{}
 	dbImps = []*imp{}
 
-	for im, _ := range pkg.ImportedPackages {
-		if _, has := pkgMap[im]; has {
-			continue
+	if includeImported {
+		for im, _ := range pkg.ImportedPackages {
+			if _, has := pkgMap[im]; has {
+				continue
+			}
+			imPkg, err := env.Pkg(im)
+			if err != nil {
+				panic(fmt.Sprintf("%s imports not existing package %s", pkg.Path, im))
+			}
+			pExp, pImp := env.packageToDBFormat(pkgMap, imPkg, includeImported)
+			dbExps = append(dbExps, pExp...)
+			dbImps = append(dbImps, pImp...)
 		}
-		imPkg, err := env.Pkg(im)
-		if err != nil {
-			panic(fmt.Sprintf("%s imports not existing package %s", pkg.Path, im))
-		}
-		pExp, pImp := env.packageToDBFormat(pkgMap, imPkg)
-		dbExps = append(dbExps, pExp...)
-		dbImps = append(dbImps, pImp...)
 	}
 
 	pkgjs := pkg
@@ -440,7 +444,7 @@ func (env *Environment) Init() (conflicts map[string]map[string][3]string) {
 	env.cleandb()
 	env.mkdb()
 	ps := env.allPackages()
-	env.db.registerPackages(ps...)
+	env.db.registerPackages(true, ps...)
 	return env.checkIntegrity(ps...)
 }
 
@@ -456,61 +460,69 @@ func (env *Environment) checkIntegrity(ps ...*exports.Package) (conflicts map[st
 	//fmt.Println("check integrity")
 	//env.mkdb()
 	conflicts = map[string]map[string][3]string{}
+	/*
+		conflicts["#dep-registry-orphan#"] = map[string][3]string{}
+		conflicts["#dep-registry-inconsistency#"] = map[string][3]string{}
+
+
+		defer func() {
+			if len(conflicts["#dep-registry-orphan#"]) == 0 {
+				delete(conflicts, "#dep-registry-orphan#")
+			}
+			if len(conflicts["#dep-registry-inconsistency#"]) == 0 {
+				delete(conflicts, "#dep-registry-inconsistency#")
+			}
+		}()
+	*/
 	pkgs := map[string]bool{}
 
 	//ps := env.allPackages()
 	//env.db.registerPackages(ps...)
 	for _, p := range ps {
+		d, er := env.Diff(p, false)
+		if er != nil {
+			conflicts[p.Path] = map[string][3]string{
+				"#dep-registry-inconsistency#": [3]string{"missing", er.Error(), ""},
+			}
+			return
+		}
+
+		if d != nil && len(d.Exports) > 0 {
+			conflicts[p.Path] = map[string][3]string{
+				"#dep-registry-inconsistency#": [3]string{"exports", strings.Join(d.Exports, "\n"), ""},
+			}
+			return
+		}
+
+		if d != nil && len(d.Imports) > 0 {
+			conflicts[p.Path] = map[string][3]string{
+				"#dep-registry-inconsistency#": [3]string{"imports", strings.Join(d.Imports, "\n"), ""},
+			}
+			return
+		}
+
 		pkgs[p.Path] = true
-		//fmt.Printf("package %s has %v exports\n", p.Path, len(p.Exports))
 		errs := env.db.hasConflict(p)
 		if len(errs) > 0 {
 			conflicts[p.Path] = errs
-		}
-		/*
-		   res, e := runGoTest(o, env.GOPATH, path.Join(env.GOPATH, "src", p.Path))
-		   if e != nil {
-		       panic(fmt.Sprintf("Error while running test for package %s in tempdir:\n%s\n", p.Path, res))
-		   }
-		*/
-	}
-	/*
-		if len(conflicts) > 0 {
-			err = fmt.Errorf("integrity conflict in GOPATH %s", env.GOPATH)
-		}
-	*/
-	/*
-			_, _, _, e := dB.GetPackage(pkg.Path, false, false)
-		if e != nil {
-			errors[pkg.Path] = [3]string{"not-in-registry", pkg.Path, e.Error()}
 			return
 		}
-	*/
+	}
+
+	if len(conflicts) > 0 {
+		return
+	}
+
 	dbpkgs, err := env.db.GetAllPackages()
 	if err != nil {
 		panic(err.Error())
 	}
-	conflicts["#dep-registry-obsolet#"] = map[string][3]string{}
-	conflicts["#dep-registry-missing#"] = map[string][3]string{}
 
 	for _, dbp := range dbpkgs {
 		if !pkgs[dbp.Package] {
-			conflicts["#dep-registry-obsolet#"][dbp.Package] = [3]string{"obsolet", dbp.Package, ""}
+			conflicts["#dep-registry-orphan#"][dbp.Package] = [3]string{"orphan", dbp.Package, ""}
 			continue
 		}
-		delete(pkgs, dbp.Package)
-	}
-
-	for restPkg, _ := range pkgs {
-		conflicts["#dep-registry-missing#"][restPkg] = [3]string{"missing", "", restPkg}
-	}
-
-	if len(conflicts["#dep-registry-obsolet#"]) == 0 {
-		delete(conflicts, "#dep-registry-obsolet#")
-	}
-
-	if len(conflicts["#dep-registry-missing#"]) == 0 {
-		delete(conflicts, "#dep-registry-missing#")
 	}
 
 	return

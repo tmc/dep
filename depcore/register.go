@@ -44,10 +44,10 @@ func getDB(gopath string) *db.DB {
 }
 */
 
-func (env *Environment) Register(pkg *exports.Package) error {
+func (env *Environment) Register(includeImported bool, pkg *exports.Package) error {
 	// dB := getDB(env.GOPATH)
 	env.mkdb()
-	env.db.registerPackages(pkg)
+	env.db.registerPackages(includeImported, pkg)
 	return nil
 }
 

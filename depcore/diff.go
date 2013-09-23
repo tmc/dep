@@ -1,6 +1,7 @@
 package depcore
 
 import (
+	"fmt"
 	"github.com/metakeule/exports"
 )
 
@@ -19,7 +20,7 @@ type pkgDiff struct {
 	Imports []string
 }
 
-func mapDiff(_old map[string]string, _new map[string]string) (diff []string) {
+func mapDiff(_old map[string]string, _new map[string]string, includeVals bool) (diff []string) {
 	diff = []string{}
 	var visited = map[string]bool{}
 
@@ -27,30 +28,38 @@ func mapDiff(_old map[string]string, _new map[string]string) (diff []string) {
 		visited[k] = true
 		vNew, inNew := _new[k]
 		if !inNew {
-			diff = append(diff, "---"+k+": "+v)
+			if includeVals {
+				diff = append(diff, "---"+k+": "+v)
+			} else {
+				diff = append(diff, "---"+k)
+			}
 			continue
 		}
-		if v != vNew {
-			diff = append(diff, "---"+k+": "+v)
-			diff = append(diff, "+++"+k+": "+vNew)
+		if includeVals {
+			if v != vNew {
+				diff = append(diff, "---"+k+": "+v)
+				diff = append(diff, "+++"+k+": "+vNew)
+			}
 		}
 	}
 
 	for k, v := range _new {
 		if !visited[k] {
-			diff = append(diff, "+++"+k+": "+v)
+			if includeVals {
+				diff = append(diff, "+++"+k+": "+v)
+			} else {
+				diff = append(diff, "+++"+k)
+			}
 		}
 	}
 	return
 }
 
-func (o *Environment) Diff(pkg *exports.Package) (diff *pkgDiff, err error) {
-	o.Open()
-	defer o.Close()
-
+func (o *Environment) Diff(pkg *exports.Package, includeImportTypeDiffs bool) (diff *pkgDiff, err error) {
 	dbpkg, exps, imps, e := o.db.GetPackage(pkg.Path, true, true)
 	if e != nil {
-		panic("package not registered: " + pkg.Path)
+		err = fmt.Errorf("package not registered: %s\n", pkg.Path)
+		return
 	}
 
 	js := asJson(pkg)
@@ -68,14 +77,14 @@ func (o *Environment) Diff(pkg *exports.Package) (diff *pkgDiff, err error) {
 
 		pDiff := &pkgDiff{}
 		pDiff.Path = pkg.Path
-		pDiff.Exports = mapDiff(oldExports, pkgjs.Exports)
+		pDiff.Exports = mapDiff(oldExports, pkgjs.Exports, true)
 
 		var oldImports = map[string]string{}
 
 		for _, dbImp := range imps {
 			oldImports[dbImp.Import+"#"+dbImp.Name] = dbImp.Value
 		}
-		pDiff.Imports = mapDiff(oldImports, pkgjs.Imports)
+		pDiff.Imports = mapDiff(oldImports, pkgjs.Imports, includeImportTypeDiffs)
 
 		if len(pDiff.Exports) > 0 || len(pDiff.Imports) > 0 {
 			return pDiff, nil
