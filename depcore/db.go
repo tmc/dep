@@ -9,7 +9,7 @@ import (
 	"database/sql/driver"
 	sqlite "github.com/mattn/go-sqlite3"
 	"github.com/metakeule/dbwrap"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 )
 
 type pqdrv int
@@ -156,7 +156,7 @@ func mapkeys(m map[string]string) []string {
 */
 
 // TODO: add verbose flag for verbose output
-func (dB *db) hasConflict(pkg *exports.Package) (errors map[string][3]string) {
+func (dB *db) hasConflict(pkg *gdf.Package) (errors map[string][3]string) {
 	errors = map[string][3]string{}
 	/*
 		if p == nil {
@@ -183,7 +183,7 @@ func (dB *db) hasConflict(pkg *exports.Package) (errors map[string][3]string) {
 	return
 }
 
-func (dB *db) registerPackages(includeImported bool, pkgs ...*exports.Package) {
+func (dB *db) registerPackages(includeImported bool, pkgs ...*gdf.Package) {
 	dbExps := []*exp{}
 	dbImps := []*imp{}
 	pkgMap := map[string]*dbPkg{}

@@ -61,12 +61,12 @@ func CLIRevisions(c *cli.Context, o *Options) ErrorCode {
 
 import (
 	"encoding/json"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"io/ioutil"
 	"path"
 )
 
-func (o *Environment) Track(pkg *exports.Package, recursive bool) (data []byte, err error) {
+func (o *Environment) Track(pkg *gdf.Package, recursive bool) (data []byte, err error) {
 	revisions := map[string]revision{}
 	for im, _ := range pkg.ImportedPackages {
 		//o.trackedImportRevisions(pkg.Path)

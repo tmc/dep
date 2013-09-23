@@ -5,7 +5,7 @@ import (
 	"fmt"
 	// "github.com/metakeule/dep/db"
 	"encoding/json"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"os"
 	"os/exec"
 	"path"
@@ -58,7 +58,7 @@ func mapEqual(a map[string]string, b map[string]string) bool {
 }
 
 // makes a diff for two packages
-func packageDiff(old_ *exports.Package, new_ *exports.Package) string {
+func packageDiff(old_ *gdf.Package, new_ *gdf.Package) string {
 	var buffer bytes.Buffer
 	if old_.Path != new_.Path {
 		buffer.WriteString(

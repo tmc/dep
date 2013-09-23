@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	// "github.com/metakeule/dep/db"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"io/ioutil"
 	"path"
 	"path/filepath"
@@ -19,7 +19,7 @@ import (
 )
 
 type Environment struct {
-	*exports.Environment
+	*gdf.Environment
 	TMPDIR     string
 	db         *db
 	tentative  *tentativeEnvironment
@@ -33,7 +33,7 @@ func NewEnv(gopath string) (ø *Environment) {
 		panic("can't create environment for empty GOPATH")
 	}
 	ø = &Environment{}
-	ø.Environment = exports.NewEnv(runtime.GOROOT(), gopath)
+	ø.Environment = gdf.NewEnv(runtime.GOROOT(), gopath)
 	ø.TMPDIR = os.Getenv("DEP_TMP")
 	ø.mkdb()
 	ø.IgnorePkgs = map[string]bool{}
@@ -95,7 +95,7 @@ func (o *Environment) scan(dir string) (b []byte, internal bool) {
 }
 
 // TODO: get rid of it
-func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *exports.Package, includeImported bool) (dbExps []*exp, dbImps []*imp) {
+func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *gdf.Package, includeImported bool) (dbExps []*exp, dbImps []*imp) {
 	p := &dbPkg{}
 	p.Package = pkg.Path
 	p.Json = asJson(pkg)
@@ -245,7 +245,7 @@ func (o *Environment) getRevision(dir string, parent string) (rev revision) {
 }
 
 // for each import, get the revisions
-func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pkg *exports.Package, parent string) {
+func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pkg *gdf.Package, parent string) {
 	for im, _ := range pkg.ImportedPackages {
 		if _, has := revisions[im]; !has {
 			p, err := o.Pkg(im)
@@ -353,8 +353,8 @@ func (env *Environment) checkoutTrackedImports(pkg string) error {
 }
 
 // returns all packages in env.GOPATH/src
-func (env *Environment) allPackages() (a []*exports.Package) {
-	a = []*exports.Package{}
+func (env *Environment) allPackages() (a []*gdf.Package) {
+	a = []*gdf.Package{}
 	prs := newSubPackages(env)
 	err := filepath.Walk(path.Join(env.GOPATH, "src"), prs.Walker)
 	if err != nil {
@@ -456,7 +456,7 @@ func (env *Environment) CheckIntegrity() (conflicts map[string]map[string][3]str
 
 // checks the integrity of all packages
 // by adding them to the db and checking for conflicts
-func (env *Environment) checkIntegrity(ps ...*exports.Package) (conflicts map[string]map[string][3]string) {
+func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string]map[string][3]string) {
 	//fmt.Println("check integrity")
 	//env.mkdb()
 	conflicts = map[string]map[string][3]string{}
@@ -541,7 +541,7 @@ func (o *Environment) getJson(pkg string) string {
 	return string(b)
 }
 
-func (o *Environment) loadJson(pkgPath string) (ø *exports.Package) {
+func (o *Environment) loadJson(pkgPath string) (ø *gdf.Package) {
 	file, _ := filepath.Abs(path.Join(o.GOPATH, "src", pkgPath, "dep.json"))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {

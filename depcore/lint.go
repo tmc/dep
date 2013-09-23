@@ -2,7 +2,7 @@ package depcore
 
 import (
 	"fmt"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"strings"
 )
 
@@ -18,7 +18,7 @@ func CLILint(c *cli.Context, o *Options) ErrorCode {
 
 */
 
-func lintInit(pkg *exports.Package) error {
+func lintInit(pkg *gdf.Package) error {
 	if pkg.InitMd5 == "" {
 		return nil
 	}
@@ -38,6 +38,6 @@ func lintInit(pkg *exports.Package) error {
 	return nil
 }
 
-func (env *Environment) Lint(pkg *exports.Package) error {
+func (env *Environment) Lint(pkg *gdf.Package) error {
 	return lintInit(pkg)
 }

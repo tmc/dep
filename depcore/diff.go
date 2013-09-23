@@ -2,7 +2,7 @@ package depcore
 
 import (
 	"fmt"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 )
 
 /*
@@ -55,7 +55,7 @@ func mapDiff(_old map[string]string, _new map[string]string, includeVals bool) (
 	return
 }
 
-func (o *Environment) Diff(pkg *exports.Package, includeImportTypeDiffs bool) (diff *pkgDiff, err error) {
+func (o *Environment) Diff(pkg *gdf.Package, includeImportTypeDiffs bool) (diff *pkgDiff, err error) {
 	dbpkg, exps, imps, e := o.db.GetPackage(pkg.Path, true, true)
 	if e != nil {
 		err = fmt.Errorf("package not registered: %s\n", pkg.Path)
@@ -65,7 +65,7 @@ func (o *Environment) Diff(pkg *exports.Package, includeImportTypeDiffs bool) (d
 	js := asJson(pkg)
 
 	// TODO: check the hash instead, escp. check the exports and imports hash
-	if exports.Hash(string(js)) != exports.Hash(string(dbpkg.Json)) {
+	if gdf.Hash(string(js)) != gdf.Hash(string(dbpkg.Json)) {
 		//__diff(a, b)
 		pkgjs := pkg
 

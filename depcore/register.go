@@ -4,7 +4,7 @@ import (
 	// "fmt"
 	// "github.com/metakeule/cli"
 	// "github.com/metakeule/dep/db"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	// "os"
 )
 
@@ -44,7 +44,7 @@ func getDB(gopath string) *db.DB {
 }
 */
 
-func (env *Environment) Register(includeImported bool, pkg *exports.Package) error {
+func (env *Environment) Register(includeImported bool, pkg *gdf.Package) error {
 	// dB := getDB(env.GOPATH)
 	env.mkdb()
 	env.db.registerPackages(includeImported, pkg)

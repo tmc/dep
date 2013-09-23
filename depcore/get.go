@@ -16,7 +16,7 @@ func CLIGet(c *cli.Context, o *Options) ErrorCode {
 	pkgs := packages(o)
 	args := []string{"get"}
 	args = append(args, c.Args()...)
-	installed := []*exports.Package{}
+	installed := []*gdf.Package{}
 	dB, err := db.Open(dEP(o.GOPATH))
 
 	if err != nil {
@@ -58,13 +58,13 @@ func CLIGet(c *cli.Context, o *Options) ErrorCode {
 
 import (
 	"fmt"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"os"
 	"path/filepath"
 	"time"
 )
 
-func (o *Environment) Get(pkg *exports.Package) (conflicts map[string]map[string][3]string, err error) {
+func (o *Environment) Get(pkg *gdf.Package) (conflicts map[string]map[string][3]string, err error) {
 	o.Open()
 	defer o.Close()
 

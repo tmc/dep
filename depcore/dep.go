@@ -2,7 +2,7 @@ package depcore
 
 import (
 	"encoding/json"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"go/build"
 	//	"io"
 	// "go/parser"
@@ -65,8 +65,8 @@ func (ø *subPackages) Walker(path string, info os.FileInfo, err error) error {
 
 // return subpackages of the not internal given package
 /*
-func SubPackages(pkg *exports.Package) (subs []*exports.Package, err error) {
-	subs = []*exports.Package{}
+func SubPackages(pkg *gdf.Package) (subs []*gdf.Package, err error) {
+	subs = []*gdf.Package{}
 	all := newSubPackages(pkg.Env)
 	//dir, _ := pkg.Dir()
 	var dir string
@@ -83,7 +83,7 @@ func SubPackages(pkg *exports.Package) (subs []*exports.Package, err error) {
 		return
 	}
 	for pPath, _ := range all.packages {
-		var p *exports.Package
+		var p *gdf.Package
 		p, err = pkg.Env.Pkg(pPath)
 		if err != nil {
 			return
@@ -95,8 +95,8 @@ func SubPackages(pkg *exports.Package) (subs []*exports.Package, err error) {
 */
 
 /*
-func packages(o *Options) (a []*exports.Package) {
-	a = []*exports.Package{}
+func packages(o *Options) (a []*gdf.Package) {
+	a = []*gdf.Package{}
 	//prs := &allPkgParser{map[string]bool{}}
 	//prs := newAllPkgParser(o.GOPATH)
 	prs := newAllPkgParser(o.Env)
@@ -128,7 +128,7 @@ func packages(o *Options) (a []*exports.Package) {
 }
 */
 
-func asJson(pkgs ...*exports.Package) (b []byte) {
+func asJson(pkgs ...*gdf.Package) (b []byte) {
 	var err error
 	b, err = json.MarshalIndent(pkgs, "", "   ")
 	if err != nil {
@@ -138,7 +138,7 @@ func asJson(pkgs ...*exports.Package) (b []byte) {
 }
 
 /*
-func readRegisterFile(dir string, internal bool) (*exports.Package, error) {
+func readRegisterFile(dir string, internal bool) (*gdf.Package, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err

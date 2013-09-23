@@ -8,7 +8,7 @@ import (
 	"strings"
 	// "fmt"
 	"github.com/metakeule/dep/depcore"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"os"
 )
 
@@ -16,7 +16,7 @@ var (
 	env        *depcore.Environment
 	argVerbose bool
 	argJson    bool
-	pkg        *exports.Package
+	pkg        *gdf.Package
 	pkgPath    string
 )
 
@@ -213,7 +213,7 @@ func main() {
 
 	if argVerbose {
 		depcore.DEBUG = true
-		exports.DEBUG = true
+		gdf.DEBUG = true
 	}
 
 	args := flag.Args()

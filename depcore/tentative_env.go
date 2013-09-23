@@ -2,7 +2,7 @@ package depcore
 
 import (
 	"fmt"
-	"github.com/metakeule/exports"
+	"github.com/metakeule/gdf"
 	"os"
 	"path"
 	"path/filepath"
@@ -19,7 +19,7 @@ type tentativeEnvironment struct {
 // checks if the updated version of package pkgPath is in conflict with
 // packages of the original environment
 //func (tent *tentativeEnvironment) checkConflicts(pkgPath string) (errs map[string][3]string) {
-func (tent *tentativeEnvironment) checkConflicts(pkg *exports.Package) (errs map[string][3]string) {
+func (tent *tentativeEnvironment) checkConflicts(pkg *gdf.Package) (errs map[string][3]string) {
 	//if !tent.Original.PkgExists(pkgPath) {
 	//	panic(fmt.Sprintf("package %s is not installed in %s/src", pkgPath, tent.Original.GOPATH))
 	//}
@@ -38,11 +38,11 @@ func (tent *tentativeEnvironment) Close() {
 
 // returns the repos that are candidates for the real update
 // that will be a movement
-func (tempEnv *tentativeEnvironment) getCandidates() (pkgs []*exports.Package) {
+func (tempEnv *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 	o := tempEnv.Original
 	//ps := tempEnv.allPackages()
 	skip := map[string]bool{}
-	pkgs = []*exports.Package{}
+	pkgs = []*gdf.Package{}
 
 	for _, p := range tempEnv.allPackages() {
 		r := _repoRoot(p.Dir)
@@ -91,7 +91,7 @@ func relativePath(parentPath, childPath string) (rel string, err error) {
 	return
 }
 
-func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*exports.Package) (err error) {
+func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package) (err error) {
 	//func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...string) (err error) {
 	o := tempEnv.Original
 	visited := map[string]bool{}
