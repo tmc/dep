@@ -365,10 +365,11 @@ func (env *Environment) allPackages() (a []*gdf.Package) {
 	}
 	//fmt.Println("all package walked")
 	for p, _ := range prs.packages {
-		if DEBUG {
-			fmt.Printf("pkg %s\n", p)
-		}
-
+		/*
+			if DEBUG {
+				fmt.Printf("pkg %s\n", p)
+			}
+		*/
 		pk, e := env.Pkg(p)
 		if e != nil {
 			//fmt.Printf("error with pkg %s: %s\n", pk.Path, e.Error())

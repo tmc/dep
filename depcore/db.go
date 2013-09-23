@@ -14,7 +14,8 @@ import (
 
 type pqdrv int
 
-var DEBUG = false
+//var DEBUG = false
+var VERBOSE bool
 
 type db struct {
 	*sql.DB
@@ -189,9 +190,11 @@ func (dB *db) registerPackages(includeImported bool, pkgs ...*gdf.Package) {
 	pkgMap := map[string]*dbPkg{}
 
 	for _, pkg := range pkgs {
-		if DEBUG {
-			fmt.Printf("register package %s\n", pkg.Path)
-		}
+		/*
+			if DEBUG {
+				fmt.Printf("register package %s\n", pkg.Path)
+			}
+		*/
 		pExp, pImp := dB.Environment.packageToDBFormat(pkgMap, pkg, includeImported)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
