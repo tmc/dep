@@ -69,10 +69,19 @@ import (
 func (o *Environment) Track(pkg *exports.Package, recursive bool) (data []byte, err error) {
 	revisions := map[string]revision{}
 	for im, _ := range pkg.ImportedPackages {
-		o.trackedImportRevisions(pkg.Path)
-		revisions[im] = o.getRevision(o.PkgDir(im), pkg.Path)
+		//o.trackedImportRevisions(pkg.Path)
+		iPkg, e := o.Pkg(im)
+
+		if e != nil {
+			err = e
+			return
+		}
+		if iPkg.Internal {
+			continue
+		}
+		revisions[im] = o.getRevision(iPkg.Dir, pkg.Path)
 		if recursive {
-			o.recursiveImportRevisions(revisions, o.Pkg(im), pkg.Path)
+			o.recursiveImportRevisions(revisions, iPkg, pkg.Path)
 			continue
 		}
 	}
@@ -82,8 +91,7 @@ func (o *Environment) Track(pkg *exports.Package, recursive bool) (data []byte, 
 		return
 	}
 
-	dir, _ := pkg.Dir()
-	filename := path.Join(dir, revFileName)
+	filename := path.Join(pkg.Dir, revFileName)
 	err = ioutil.WriteFile(filename, data, 0644)
 	return
 }

@@ -117,7 +117,7 @@ func NewTestEnv() *testEnv {
 				"github.com",
 				"metakeule",
 				"dep",
-				"gopath"))}
+				"example"))}
 	t.prepare()
 	return t
 }
@@ -135,11 +135,20 @@ func (env *testEnv) Get(pkg, rev string) error {
 func (ev *testEnv) Update(pkg, rev string) error {
 	defer ev.inner.Close()
 	env := ev.inner
+
 	err := env.getPackage(pkg)
 	if err != nil {
 		panic(err.Error())
 	}
-	dir := env.PkgDir(pkg)
+	var dir string
+	var internal bool
+	dir, internal, err = env.PkgDir(pkg)
+	if err != nil {
+		panic(err.Error())
+	}
+	if internal {
+		panic(fmt.Sprintf("can't update internal package %s", pkg))
+	}
 	master := getmasterRevision(pkg, dir)
 	env.checkoutImport(dir, revision{VCM: "git", Rev: rev})
 	err = env.checkoutTrackedImports(pkg)
@@ -163,11 +172,11 @@ func (ev *testEnv) Update(pkg, rev string) error {
 		}
 	}
 
-	conflicts, e := env.checkIntegrity()
-	if e != nil {
+	conflicts := env.Init()
+	if len(conflicts) > 0 {
 		data, _ := json.MarshalIndent(conflicts, "", "  ")
 		fmt.Printf("%s\n", data)
-		panic(e.Error())
+		panic(fmt.Sprintf("GOPATH %s is not integer", env.GOPATH))
 	}
 
 	err = env.db.updatePackage(pkg)
@@ -176,7 +185,16 @@ func (ev *testEnv) Update(pkg, rev string) error {
 		return err
 	}
 
-	if r := env.getRevisionGit(env.PkgDir(pkg)); r != master {
+	pdir, pinternal, perr := env.PkgDir(pkg)
+	if perr != nil {
+		panic(fmt.Sprintf("can't update package %s: %s", pkg, perr))
+	}
+
+	if pinternal {
+		panic(fmt.Sprintf("can't update internal package %s", pkg))
+	}
+
+	if r := env.getRevisionGit(pdir); r != master {
 		return fmt.Errorf("revision after update %#v not matching master: %#v in package %#v\n", r, master, pkg)
 	}
 	depsAfter, e := env.trackedImportRevisions(pkg)

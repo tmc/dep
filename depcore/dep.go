@@ -15,10 +15,16 @@ import (
 
 type subPackages struct {
 	packages map[string]bool
-	env      *exports.Environment
+	env      environmental
 }
 
-func newSubPackages(env *exports.Environment) *subPackages {
+type environmental interface {
+	shouldIgnorePkg(string) bool
+	Build() *build.Context
+	PkgPath(string) string
+}
+
+func newSubPackages(env environmental) *subPackages {
 	return &subPackages{
 		packages: map[string]bool{},
 		env:      env,
@@ -30,8 +36,27 @@ func (ø *subPackages) Walker(path string, info os.FileInfo, err error) error {
 		return err
 	}
 	if info.IsDir() {
+		pPath := ø.env.PkgPath(path)
+
+		if ø.env.shouldIgnorePkg(pPath) {
+			return filepath.SkipDir
+		}
+		//ø.env.Build()
+		/*
+			base := filepath.Base(path)
+
+			if base == "example" || base == "examples" {
+				//	fmt.Printf("pkg base: %s\n", base)
+				return filepath.SkipDir
+			}
+		*/
+		//pkg, err := ø.env.Build().ImportDir(path, build.ImportMode(0))
+
+		//pPath := ø.env.PkgPath(path)
 		pkg, err := ø.env.Build().ImportDir(path, build.ImportMode(0))
+		//pkg, err := ø.env.Build().Import(pPath, ø.env.GOPATH , build.ImportMode(0))
 		if err == nil && pkg != nil {
+			//	fmt.Printf("found package %s\n", pkg.ImportPath)
 			ø.packages[pkg.ImportPath] = true
 		}
 	}
@@ -39,19 +64,35 @@ func (ø *subPackages) Walker(path string, info os.FileInfo, err error) error {
 }
 
 // return subpackages of the not internal given package
+/*
 func SubPackages(pkg *exports.Package) (subs []*exports.Package, err error) {
 	subs = []*exports.Package{}
 	all := newSubPackages(pkg.Env)
-	dir, _ := pkg.Dir()
+	//dir, _ := pkg.Dir()
+	var dir string
+	var internal bool
+	dir, internal, err = pkg.Env.PkgDir(pkg.Path)
+	if err != nil {
+		return
+	}
+	if internal {
+		return
+	}
 	err = filepath.Walk(dir, all.Walker)
 	if err != nil {
 		return
 	}
 	for pPath, _ := range all.packages {
-		subs = append(subs, pkg.Env.Pkg(pPath))
+		var p *exports.Package
+		p, err = pkg.Env.Pkg(pPath)
+		if err != nil {
+			return
+		}
+		subs = append(subs, p)
 	}
 	return
 }
+*/
 
 /*
 func packages(o *Options) (a []*exports.Package) {

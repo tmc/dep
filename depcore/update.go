@@ -71,6 +71,7 @@ func CLIUpdate(c *cli.Context, o *Options) ErrorCode {
 }
 */
 
+/*
 import (
 	"github.com/metakeule/exports"
 	"os"
@@ -98,3 +99,4 @@ func (o *Environment) Update(pkg *exports.Package, keepToPath string) (conflicts
 
 	return
 }
+*/

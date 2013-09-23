@@ -3,6 +3,7 @@ package depcore
 import (
 	"encoding/json"
 	"fmt"
+
 	// "github.com/metakeule/dep/db"
 	"database/sql"
 	"database/sql/driver"
@@ -65,6 +66,15 @@ func (ø *db) CleanupTables() {
 	}
 }
 
+func (ø *db) NumPackages() (n int) {
+	row := ø.QueryRow(`select count(package) from packages`)
+	err := row.Scan(&n)
+	if err != nil {
+		panic(err.Error())
+	}
+	return
+}
+
 func (ø *db) CreateTables() {
 	// fmt.Printf("CREATE TABLES FOR %s\n", db.File)
 	var err error
@@ -112,19 +122,29 @@ func (ø *db) CreateTables() {
 
 var dBWrapper *dbwrap.Wrapper
 
-func init() {
+func initDB() {
 	dBWrapper = dbwrap.New("depdb", pqdrv(0))
 	dBWrapper.BeforeAll = func(conn driver.Conn, event string, data ...interface{}) {
 		<-lock
-		if DEBUG {
-			fmt.Println(data...)
-		}
+		/*
+			    	if DEBUG {
+						fmt.Println(data...)
+					}
+		*/
 	}
 
 	dBWrapper.AfterAll = func(conn driver.Conn, event string, data ...interface{}) {
 		lock <- 1
 	}
 	lock <- 1
+}
+
+func mapkeys(m map[string]string) []string {
+	res := []string{}
+	for k, _ := range m {
+		res = append(res, k)
+	}
+	return res
 }
 
 /*
@@ -137,13 +157,19 @@ func init() {
 */
 
 // TODO: add verbose flag for verbose output
-func (dB *db) hasConflict(p *exports.Package) (errors map[string][3]string) {
-	pkg := p
+func (dB *db) hasConflict(pkg *exports.Package) (errors map[string][3]string) {
+	errors = map[string][3]string{}
+	/*
+		if p == nil {
+			errors[pkg.Path] = [3]string{"missing", pkg.Path, ""}
+			return
+		}
+	*/
 	imp, err := dB.GetImported(pkg.Path)
 	if err != nil {
-		panic(err.Error())
+		errors[pkg.Path] = [3]string{"error", err.Error(), ""}
+		return
 	}
-	errors = map[string][3]string{}
 	for _, im := range imp {
 		key := fmt.Sprintf("%s: %s", im.Package, im.Name)
 		if val, exists := pkg.Exports[im.Name]; exists {
@@ -152,6 +178,7 @@ func (dB *db) hasConflict(p *exports.Package) (errors map[string][3]string) {
 			}
 			continue
 		}
+		//fmt.Printf("package %s \n\timports %s of %s, \n\tbut that has \n\t%s\n\n", im.Package, im.Name, pkg.Path, strings.Join(mapkeys(pkg.Exports), "\n\t"))
 		errors[key] = [3]string{"removed", im.Value, ""}
 	}
 	return
@@ -163,6 +190,9 @@ func (dB *db) registerPackages(pkgs ...*exports.Package) {
 	pkgMap := map[string]*dbPkg{}
 
 	for _, pkg := range pkgs {
+		if DEBUG {
+			fmt.Printf("register package %s\n", pkg.Path)
+		}
 		pExp, pImp := dB.Environment.packageToDBFormat(pkgMap, pkg)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)

@@ -50,3 +50,9 @@ func (env *Environment) Register(pkg *exports.Package) error {
 	env.db.registerPackages(pkg)
 	return nil
 }
+
+func (env *Environment) UnRegister(pkgPath string) error {
+	// dB := getDB(env.GOPATH)
+	env.mkdb()
+	return env.db.DeletePackage(pkgPath)
+}

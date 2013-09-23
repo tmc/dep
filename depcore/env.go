@@ -20,9 +20,10 @@ import (
 
 type Environment struct {
 	*exports.Environment
-	TMPDIR    string
-	db        *db
-	tentative *tentativeEnvironment
+	TMPDIR     string
+	db         *db
+	tentative  *tentativeEnvironment
+	ignorePkgs map[string]bool
 }
 
 func NewEnv(gopath string) (ø *Environment) {
@@ -33,7 +34,22 @@ func NewEnv(gopath string) (ø *Environment) {
 	ø.Environment = exports.NewEnv(runtime.GOROOT(), gopath)
 	ø.TMPDIR = os.Getenv("DEP_TMP")
 	ø.mkdb()
+	ø.ignorePkgs = map[string]bool{}
+	ign, e := ioutil.ReadFile(filepath.Join(gopath, ".depignore"))
+	if e != nil {
+		return
+	}
+	lines := bytes.Split(ign, []byte("\n"))
+
+	for _, line := range lines {
+		ø.ignorePkgs[string(line)] = true
+	}
+
 	return
+}
+
+func (env *Environment) shouldIgnorePkg(pkg string) bool {
+	return env.ignorePkgs[pkg]
 }
 
 func (env *Environment) newTentative() (t *tentativeEnvironment) {
@@ -48,10 +64,16 @@ func (env *Environment) newTentative() (t *tentativeEnvironment) {
 	return env.tentative
 }
 
+func (o *Environment) NumPkgsInRegistry() int {
+	return o.db.NumPackages()
+}
+
 func (o *Environment) pkgJson(path string) (b []byte, internal bool) {
-	p := o.Pkg(path)
+	p, err := o.Pkg(path)
+	if err != nil {
+		panic(err.Error())
+	}
 	internal = p.Internal
-	var err error
 	b, err = json.MarshalIndent(p, "", "   ")
 	if err != nil {
 		panic(err.Error())
@@ -83,7 +105,10 @@ func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *exports
 		if _, has := pkgMap[im]; has {
 			continue
 		}
-		imPkg := env.Pkg(im)
+		imPkg, err := env.Pkg(im)
+		if err != nil {
+			panic(fmt.Sprintf("%s imports not existing package %s", pkg.Path, im))
+		}
 		pExp, pImp := env.packageToDBFormat(pkgMap, imPkg)
 		dbExps = append(dbExps, pExp...)
 		dbImps = append(dbImps, pImp...)
@@ -219,8 +244,17 @@ func (o *Environment) getRevision(dir string, parent string) (rev revision) {
 func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pkg *exports.Package, parent string) {
 	for im, _ := range pkg.ImportedPackages {
 		if _, has := revisions[im]; !has {
-			p := o.Pkg(im)
-			d, _ := p.Dir()
+			p, err := o.Pkg(im)
+			if err != nil {
+				panic(fmt.Sprintf("package %s does not exist", im))
+			}
+			//d, _ := p.Dir()
+			var d string
+			var internal bool
+			d, internal, err = o.PkgDir(im)
+			if internal {
+				continue
+			}
 			revisions[im] = o.getRevision(d, pkg.Path)
 			o.recursiveImportRevisions(revisions, p, pkg.Path)
 		}
@@ -295,12 +329,20 @@ func (env *Environment) checkoutTrackedImports(pkg string) error {
 	}
 	visited := map[string]bool{}
 	for p, rev := range revisions {
-		dir := env.PkgDir(p)
+		dir, internal, e := env.PkgDir(p)
+		if e != nil {
+			panic(fmt.Sprintf("can't checkout tracked import %s of package %s: %s",
+				p, pkg, e))
+		}
+		if internal {
+			continue
+		}
 		r := _repoRoot(dir)
 		if visited[r] {
 			continue
 		}
 		visited[r] = true
+
 		env.checkoutImport(r, rev)
 	}
 	return nil
@@ -309,13 +351,26 @@ func (env *Environment) checkoutTrackedImports(pkg string) error {
 // returns all packages in env.GOPATH/src
 func (env *Environment) allPackages() (a []*exports.Package) {
 	a = []*exports.Package{}
-	prs := newSubPackages(env.Environment)
+	prs := newSubPackages(env)
 	err := filepath.Walk(path.Join(env.GOPATH, "src"), prs.Walker)
 	if err != nil {
+		//if err == filepath.SkipDir {
+		//	return
+		//}
 		panic(err.Error())
 	}
+	//fmt.Println("all package walked")
 	for p, _ := range prs.packages {
-		a = append(a, env.Pkg(p))
+		if DEBUG {
+			fmt.Printf("pkg %s\n", p)
+		}
+
+		pk, e := env.Pkg(p)
+		if e != nil {
+			//fmt.Printf("error with pkg %s: %s\n", pk.Path, e.Error())
+			continue
+		}
+		a = append(a, pk)
 	}
 	return
 }
@@ -361,6 +416,12 @@ func (env *Environment) checkoutImport(d string, rev revision) {
 	}
 }
 
+func (env *Environment) cleandb() {
+	env.Close()
+	os.Remove(path.Join(env.GOPATH, "dep.db"))
+	env.Open()
+}
+
 // creates the db file if it is not there
 func (env *Environment) mkdb() {
 	dbFile := path.Join(env.GOPATH, "dep.db")
@@ -375,15 +436,33 @@ func (env *Environment) mkdb() {
 	env.db = dB
 }
 
-// checks the integrity of all packages
-// by adding them to the db and checking for conflicts
-func (env *Environment) checkIntegrity() (conflicts map[string]map[string][3]string, err error) {
+func (env *Environment) Init() (conflicts map[string]map[string][3]string) {
+	env.cleandb()
 	env.mkdb()
-	conflicts = map[string]map[string][3]string{}
-
 	ps := env.allPackages()
 	env.db.registerPackages(ps...)
+	return env.checkIntegrity(ps...)
+}
+
+func (env *Environment) CheckIntegrity() (conflicts map[string]map[string][3]string) {
+	env.mkdb()
+	ps := env.allPackages()
+	return env.checkIntegrity(ps...)
+}
+
+// checks the integrity of all packages
+// by adding them to the db and checking for conflicts
+func (env *Environment) checkIntegrity(ps ...*exports.Package) (conflicts map[string]map[string][3]string) {
+	//fmt.Println("check integrity")
+	//env.mkdb()
+	conflicts = map[string]map[string][3]string{}
+	pkgs := map[string]bool{}
+
+	//ps := env.allPackages()
+	//env.db.registerPackages(ps...)
 	for _, p := range ps {
+		pkgs[p.Path] = true
+		//fmt.Printf("package %s has %v exports\n", p.Path, len(p.Exports))
 		errs := env.db.hasConflict(p)
 		if len(errs) > 0 {
 			conflicts[p.Path] = errs
@@ -395,14 +474,55 @@ func (env *Environment) checkIntegrity() (conflicts map[string]map[string][3]str
 		   }
 		*/
 	}
-	if len(conflicts) > 0 {
-		err = fmt.Errorf("integrity conflict in GOPATH %s", env.GOPATH)
+	/*
+		if len(conflicts) > 0 {
+			err = fmt.Errorf("integrity conflict in GOPATH %s", env.GOPATH)
+		}
+	*/
+	/*
+			_, _, _, e := dB.GetPackage(pkg.Path, false, false)
+		if e != nil {
+			errors[pkg.Path] = [3]string{"not-in-registry", pkg.Path, e.Error()}
+			return
+		}
+	*/
+	dbpkgs, err := env.db.GetAllPackages()
+	if err != nil {
+		panic(err.Error())
 	}
+	conflicts["#dep-registry-obsolet#"] = map[string][3]string{}
+	conflicts["#dep-registry-missing#"] = map[string][3]string{}
+
+	for _, dbp := range dbpkgs {
+		if !pkgs[dbp.Package] {
+			conflicts["#dep-registry-obsolet#"][dbp.Package] = [3]string{"obsolet", dbp.Package, ""}
+			continue
+		}
+		delete(pkgs, dbp.Package)
+	}
+
+	for restPkg, _ := range pkgs {
+		conflicts["#dep-registry-missing#"][restPkg] = [3]string{"missing", "", restPkg}
+	}
+
+	if len(conflicts["#dep-registry-obsolet#"]) == 0 {
+		delete(conflicts, "#dep-registry-obsolet#")
+	}
+
+	if len(conflicts["#dep-registry-missing#"]) == 0 {
+		delete(conflicts, "#dep-registry-missing#")
+	}
+
 	return
 }
 
 func (o *Environment) getJson(pkg string) string {
-	b, err := json.Marshal(o.Pkg(pkg))
+	p, err := o.Pkg(pkg)
+	if err != nil {
+		panic(err.Error())
+	}
+	var b []byte
+	b, err = json.Marshal(p)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -427,7 +547,13 @@ func (env *Environment) getRev(pkg string, rev string) {
 	if err != nil {
 		panic(err.Error())
 	}
-	dir := env.PkgDir(pkg)
+	dir, internal, e := env.PkgDir(pkg)
+	if e != nil {
+		panic(e.Error())
+	}
+	if internal {
+		panic(fmt.Sprintf("can't get revision of internal package %s", pkg))
+	}
 	r := revision{}
 	r.VCM = "git"
 	r.Rev = rev

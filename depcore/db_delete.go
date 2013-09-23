@@ -2,6 +2,7 @@ package depcore
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 func _deleteExports(pkgPath string, tx *sql.Tx) (err error) {
@@ -44,5 +45,6 @@ func (ø *db) DeletePackage(pkgPath string) (err error) {
 		return
 	}
 	tx.Commit()
+	fmt.Printf("deleted: %s\n", pkgPath)
 	return
 }

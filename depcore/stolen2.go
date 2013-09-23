@@ -590,7 +590,7 @@ var vcsPaths = []*vcsPath{
 	},
 }
 
-func init() {
+func initvcs() {
 	// fill in cached regexps.
 	// Doing this eagerly discovers invalid regexp syntax
 	// without having to run a command that needs that regexp.

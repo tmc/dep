@@ -1,5 +1,6 @@
 package depcore
 
+/*
 import (
 	"bytes"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 )
+*/
 
 /*
 
@@ -55,6 +57,7 @@ func CLIInstall(c *cli.Context, o *Options) ErrorCode {
 // TODO install it like an update in the safe tentative environment
 // and check, if there are problems, only if not, move it to the real place
 // make sure the dependancies are checked out in the right version
+/*
 func (o *Environment) Install(pkg *exports.Package, _args ...string) error {
 	args := []string{"install"}
 	args = append(args, _args...)
@@ -80,3 +83,4 @@ func (o *Environment) Install(pkg *exports.Package, _args ...string) error {
 
 	return nil
 }
+*/
