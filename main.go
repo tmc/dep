@@ -7,6 +7,7 @@ import (
 	"github.com/metakeule/gdf"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -26,7 +27,7 @@ func initV1() {
 	if os.Getenv("DEP_TMP") == "" {
 		panic("DEP_TMP not set")
 	}
-	env = depcore.NewEnv(os.Getenv("GOPATH"))
+	env = depcore.NewEnv(strings.Split(os.Getenv("GOPATH"), ";")[0])
 	env.TMPDIR = os.Getenv("DEP_TMP")
 
 	flag.BoolVar(&argVerbose, "verbose", false, "print details about the actions taken")

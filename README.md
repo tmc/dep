@@ -16,7 +16,7 @@ Help on the subcommands is available via
 
 Prerequisites:
 
-    - A functional GOPATH.
+    - A functional GOPATH. If GOPATH is set to multiple paths, separated by ':', only the first one is considered
     - The environment variable DEP_TMP set to a temporary directory.
     - Make sure no package you have uses relative import paths, since they are not supported and a bad habit anyway.
 
