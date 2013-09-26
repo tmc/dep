@@ -14,6 +14,7 @@ var (
 	argVerbose bool
 	argJson    bool
 	argYes     bool
+	argNoWarn  bool
 	pkg        *gdf.Package
 	pkgPath    string
 )
@@ -31,6 +32,7 @@ func initV1() {
 	flag.BoolVar(&argVerbose, "verbose", false, "print details about the actions taken")
 	flag.BoolVar(&argJson, "json", false, "print in readable json format")
 	flag.BoolVar(&argYes, "y", false, "answer all questions with 'yes'")
+	flag.BoolVar(&argNoWarn, "no-warn", false, "suppress warnings")
 }
 
 func init() {
@@ -68,7 +70,7 @@ func main() {
 	cmd := args[0]
 
 	env.Open()
-	if len(env.IgnorePkgs) > 0 {
+	if len(env.IgnorePkgs) > 0 && !argNoWarn {
 		fmt.Printf("WARNING: ignoring packages in %s\n\n", filepath.Join(env.GOPATH, ".depignore"))
 	}
 	if cmd != "init" && cmd != "check" {
