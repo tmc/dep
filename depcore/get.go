@@ -64,13 +64,13 @@ import (
 	"time"
 )
 
-func (o *Environment) Get(pkg *gdf.Package) (conflicts map[string]map[string][3]string, err error) {
+func (o *Environment) Get(pkg *gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, err error) {
 	o.Open()
 	defer o.Close()
 
 	t := o.newTentative()
 	var er error
-	conflicts, er = t.updatePackage(pkg.Path)
+	conflicts, er = t.updatePackage(pkg.Path, confirmation)
 
 	if er != nil {
 		dir := filepath.Dir(t.GOPATH)

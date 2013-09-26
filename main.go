@@ -13,6 +13,7 @@ var (
 	env        *depcore.Environment
 	argVerbose bool
 	argJson    bool
+	argYes     bool
 	pkg        *gdf.Package
 	pkgPath    string
 )
@@ -29,6 +30,7 @@ func initV1() {
 
 	flag.BoolVar(&argVerbose, "verbose", false, "print details about the actions taken")
 	flag.BoolVar(&argJson, "json", false, "print in readable json format")
+	flag.BoolVar(&argYes, "y", false, "answer all questions with 'yes'")
 }
 
 func init() {

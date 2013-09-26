@@ -156,7 +156,7 @@ func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package
 */
 
 // return no errors for conflicts, only for severe errors
-func (tentative *tentativeEnvironment) updatePackage(pkg string) (conflicts map[string]map[string][3]string, err error) {
+func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, err error) {
 	//conflicts = map[string]map[string][3]string{}
 	err = tentative.getPackage(pkg)
 	if err != nil {
@@ -203,7 +203,9 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string) (conflicts map[
 		}
 	}
 	if len(conflicts) == 0 {
-		err = tentative.moveCandidatesToGOPATH(candidates...)
+		if confirmation(candidates...) {
+			err = tentative.moveCandidatesToGOPATH(candidates...)
+		}
 	}
 	return
 }

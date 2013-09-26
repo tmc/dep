@@ -212,9 +212,9 @@ func (dB *db) registerPackages(includeImported bool, pkgs ...*gdf.Package) {
 	}
 }
 
-func (dB *db) updatePackage(pkg string) error {
+func (dB *db) updatePackage(pkg string, confirmation func(candidates ...*gdf.Package) bool) error {
 	tentative := dB.Environment.newTentative()
-	conflicts, err := tentative.updatePackage(pkg)
+	conflicts, err := tentative.updatePackage(pkg, confirmation)
 
 	if err != nil {
 		return err

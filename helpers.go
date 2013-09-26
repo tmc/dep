@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/metakeule/gdf"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,28 @@ func toJson(i interface{}) string {
 		panic(err.Error())
 	}
 	return fmt.Sprintf("%s", b)
+}
+
+func ask(question string) bool {
+	fmt.Println(question + " (y/n)?")
+	answer := ""
+	_, err := fmt.Scanln(&answer)
+	if err != nil {
+		panic(err.Error())
+	}
+	answer = strings.ToLower(answer)
+	answer = strings.TrimSpace(answer)
+	if answer == "y" || answer == "yes" {
+		return true
+	}
+	return false
+}
+
+func exitUnless(question string) {
+	if !ask(question) {
+		fmt.Println("aborted")
+		os.Exit(1)
+	}
 }
 
 func printConflicts(conflicts map[string]map[string][3]string) {
@@ -94,7 +117,28 @@ func runCmd(cmd string) (err error) {
 		}
 		fmt.Printf("Looks ok: %s\n", pkg.Path)
 	case "get":
-		conflicts, e := env.Get(pkg)
+		conflicts, e := env.Get(pkg, func(candidates ...*gdf.Package) bool {
+			if argYes {
+				return true
+			}
+			c := []string{}
+
+			for _, cand := range candidates {
+				c = append(c, cand.Path)
+			}
+
+			if ask(
+				fmt.Sprintf(
+					`The following packages will be updated:
+	%s
+This is alpha software and may break your existing packages in %s.
+Proceed`,
+					strings.Join(c, "\n\t"),
+					env.GOPATH)) {
+				return true
+			}
+			return false
+		})
 		if len(conflicts) > 0 {
 			if argJson {
 				fmt.Println(toJson(conflicts))
@@ -108,6 +152,7 @@ func runCmd(cmd string) (err error) {
 			panic(e.Error())
 		}
 	case "init":
+		exitUnless("This will destroy any former registrations.\nProceed")
 		conflicts := env.Init()
 		if len(conflicts) > 0 {
 			if argJson {
@@ -153,10 +198,13 @@ func runCmd(cmd string) (err error) {
 			os.Exit(1)
 		}
 	case "register":
+		exitUnless(fmt.Sprintf("This will update the registration for package %s.\nProceed", pkg.Path))
 		err = env.Register(false, pkg)
 	case "register-all":
+		exitUnless(fmt.Sprintf("This will update the registration for package %s and all packages that it depends on.\nProceed", pkg.Path))
 		err = env.Register(true, pkg)
 	case "unregister":
+		exitUnless(fmt.Sprintf("This will remove the registration for package %s.\nProceed", pkg.Path))
 		err = env.UnRegister(pkgPath)
 	default:
 		fmt.Println(usage)

@@ -5,7 +5,8 @@ dep is a tool for the installation and update of Go packages
 
 It prevents breakage of existing packages in GOPATH with the help
 of a tentative installation in a temporary GOPATH and by detecting
-breakage of dependancies in the go dependancy format (GDF).
+breakage of dependancies in the go dependancy format (GDF, see 
+http://github.com/metakeule/gdf).
 
 Packages that use relative import paths are not supported and might
 break.
@@ -32,6 +33,7 @@ is chosen.
 Options:
     -verbose          Print details about the actions taken.
     -json             Print in machine readable json format
+    -y                Answer all questions with 'yes'
 
 The commands are:
 

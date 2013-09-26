@@ -179,7 +179,9 @@ func (ev *testEnv) Update(pkg, rev string) error {
 		panic(fmt.Sprintf("GOPATH %s is not integer", env.GOPATH))
 	}
 
-	err = env.db.updatePackage(pkg)
+	err = env.db.updatePackage(pkg, func(candidates ...*gdf.Package) bool {
+		return true
+	})
 	if err != nil {
 		//		fmt.Printf("normal error in updating package\n")
 		return err
