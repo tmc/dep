@@ -3,8 +3,7 @@ dep
 
 __WARNING: This is currently a draft and WIP. The concept and the tools are in pre-alpha state and not meant to be used in production. You may break your installation.__
 
-Manages Go package dependencies with the help of the Go Dependency Format (GDF) that
-is based on the exports of a package.
+Manages Go package dependencies with the help of the [Go Dependency Format](http://github.com/metakeule/gdf) (GDF) that is based on the exports of a package.
 
 The idea is described [here](https://docs.google.com/document/d/1hN7OP4QjfsasWvKSvm3NdjW1-3tKdFkmCeSI3uaT6wo).
 
@@ -108,14 +107,34 @@ If you removed a package, you need to tell dep of the removal with
 
     dep unregister
 
+Test
+----
+
+Since the tests involve that a package changes its exports, they are in seperate repositories.
+Currently there are the following test scenarios (you are invited to write more):
+
+- [compatible changing symbols](http://github.com/metakeule/deptest_compatible)
+- [incompatible changing symbols](http://github.com/metakeule/deptest_incompatible)
+- [partial changing symbols](https://github.com/metakeule/deptest_partial)
+- [disappearing symbols](https://github.com/metakeule/deptest_missing)
+
+To run them: go get them and then run go test in the corresponding directory.
+Warning some tests (e.g. https://github.com/metakeule/deptest_missing) might break
+the consistency of your registry, i.e. when you run
+
+    dep check
+
+you will get an error. That is natural since the packages are meant to test the breakage
+and the dep tool is indicating that. However, to able to use the dep tool alongside with
+these packages, you will have to add them to a .depignore file inside your GOPATH.
+You should not do this for "normal" packages however, since they are now ignored by dep.
+
 
 Issues or how you can help
 --------------------------
 
 -   only tested on linux, needs testers and code changes (mainly paths) 
     for MacOSX and Windows, but should be no big deal
--   needs tests for different situations. examples code: 
-    https://github.com/metakeule/deptest_partial
 -   currently no solution for imports that are merged into the namespace (.)
 -   currently no solution for getting the type of variables that must be gained by evalution
 -   improve documentation
