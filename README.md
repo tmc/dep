@@ -6,7 +6,7 @@ WARNING: This is currently a draft and WIP. The concept and the tools are in pre
 Manages Go package dependencies with the help of the Go Dependency Format (GDF) that
 is based on the exports of a package.
 
-The idea is described here: https://docs.google.com/document/d/1hN7OP4QjfsasWvKSvm3NdjW1-3tKdFkmCeSI3uaT6wo
+The idea is described [here](https://docs.google.com/document/d/1hN7OP4QjfsasWvKSvm3NdjW1-3tKdFkmCeSI3uaT6wo).
 
 dep is a commandline tool that helps you discover problems with package dependencies before
 the affect your development environment.
@@ -83,7 +83,7 @@ However without the dep-rev.json it might be that even the first installation of
 revision was the last that did work and that is the information tracked by the dep-rev.json file.
 
 As a package developer you may minimize breakage and false positives of the dep tool, if you
-act according to the package developer rules as defined in https://docs.google.com/document/d/1hN7OP4QjfsasWvKSvm3NdjW1-3tKdFkmCeSI3uaT6wo
+act according to the  [package developer rules](https://github.com/metakeule/gdf/wiki/Recommendations-for-go-package-developers).
 
 The command 
     
@@ -108,6 +108,7 @@ If you removed a package, you need to tell dep of the removal with
 
     dep unregister
 
+
 Issues or how you can help
 --------------------------
 
@@ -120,3 +121,4 @@ Issues or how you can help
 -   improve documentation
 -   improve code
 -   more test cases
+-   currently only tested with git. needs testing for bzr and hg.

@@ -18,6 +18,9 @@ Required environment variables:
        - DEP_TMP should point to a directory where tentative
          and temporary installations go to
 
+Package developers, please read: 
+https://github.com/metakeule/gdf/wiki/Recommendations-for-go-package-developers
+
 PLEASE BE WARNED:
 All actions act within the current GOPATH environment.
 As dep is experimental at this point, you might loose all
