@@ -1,7 +1,7 @@
 dep
 ===
 
-WARNING: This is currently a draft and WIP. The concept and the tools are in pre-alpha state and not meant to be used in production. You may break your installation.
+__WARNING: This is currently a draft and WIP. The concept and the tools are in pre-alpha state and not meant to be used in production. You may break your installation.__
 
 Manages Go package dependencies with the help of the Go Dependency Format (GDF) that
 is based on the exports of a package.
