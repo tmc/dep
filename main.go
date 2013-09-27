@@ -74,15 +74,18 @@ func main() {
 	if len(env.IgnorePkgs) > 0 && !argNoWarn {
 		fmt.Printf("WARNING: ignoring packages in %s\n\n", filepath.Join(env.GOPATH, ".depignore"))
 	}
+
 	if cmd != "init" && cmd != "check" {
 		if len(args) == 2 {
 			pkgPath = args[1]
 		} else {
 			pkgPath = getDefaultPackagePath()
 		}
-		if cmd != "unregister" {
+
+		if cmd != "unregister" && cmd != "get" {
 			getPackage(pkgPath)
 		}
+
 	}
 	defer env.Close()
 

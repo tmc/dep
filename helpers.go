@@ -117,7 +117,7 @@ func runCmd(cmd string) (err error) {
 		}
 		fmt.Printf("Looks ok: %s\n", pkg.Path)
 	case "get":
-		conflicts, e := env.Get(pkg, func(candidates ...*gdf.Package) bool {
+		conflicts, e := env.Get(pkgPath, func(candidates ...*gdf.Package) bool {
 			if argYes {
 				return true
 			}

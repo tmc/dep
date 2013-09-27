@@ -19,6 +19,7 @@ Prerequisites:
     - A functional GOPATH. If GOPATH is set to multiple paths, separated by ':', only the first one is considered
     - The environment variable DEP_TMP set to a temporary directory.
     - Make sure no package you have uses relative import paths, since they are not supported and a bad habit anyway.
+    - You need a working github.com/mattn/go-sqlite3 package.
 
 WARNING: Currently dep is not production ready and may break in several ways.
 So currently it should only be used for testing purposes. Setup a seperate GOPATH
