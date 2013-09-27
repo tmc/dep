@@ -163,11 +163,15 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation fu
 		return
 	}
 
-	//tempEnv := NewEnv(tmpDir)
-	err = tentative.checkoutTrackedImports(pkg)
+	_, errNotExists := os.Stat(path.Join(tentative.GOPATH, "src", pkg, revFileName))
 
-	if err != nil {
-		return
+	if errNotExists == nil {
+		//tempEnv := NewEnv(tmpDir)
+		err = tentative.checkoutTrackedImports(pkg)
+
+		if err != nil {
+			return
+		}
 	}
 
 	//tentative.mkdb()
