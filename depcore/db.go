@@ -157,7 +157,8 @@ func mapkeys(m map[string]string) []string {
 */
 
 // TODO: add verbose flag for verbose output
-func (dB *db) hasConflict(pkg *gdf.Package) (errors map[string][3]string) {
+// ignore the given dependencies
+func (dB *db) hasConflict(pkg *gdf.Package, ignoring map[string]bool) (errors map[string][3]string) {
 	errors = map[string][3]string{}
 	/*
 		if p == nil {
@@ -171,6 +172,9 @@ func (dB *db) hasConflict(pkg *gdf.Package) (errors map[string][3]string) {
 		return
 	}
 	for _, im := range imp {
+		if ignoring[im.Package] {
+			continue
+		}
 		key := fmt.Sprintf("%s:%s", im.Package, im.Name)
 		if val, exists := pkg.Exports[im.Name]; exists {
 			if val != im.Value {

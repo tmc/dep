@@ -503,7 +503,7 @@ func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string
 		}
 
 		pkgs[p.Path] = true
-		errs := env.db.hasConflict(p)
+		errs := env.db.hasConflict(p, map[string]bool{})
 		if len(errs) > 0 {
 			conflicts[p.Path] = errs
 			return

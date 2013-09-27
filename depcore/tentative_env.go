@@ -16,6 +16,7 @@ type tentativeEnvironment struct {
 	Original *Environment
 }
 
+/*
 // checks if the updated version of package pkgPath is in conflict with
 // packages of the original environment
 //func (tent *tentativeEnvironment) checkConflicts(pkgPath string) (errs map[string][3]string) {
@@ -29,6 +30,7 @@ func (tent *tentativeEnvironment) checkConflicts(pkg *gdf.Package) (errs map[str
 	//}
 	return tent.Original.db.hasConflict(pkg)
 }
+*/
 
 // closes db and remove the temporary gopath
 func (tent *tentativeEnvironment) Close() {
@@ -195,13 +197,23 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation fu
 
 	candidates := tentative.getCandidates()
 
+	// to ignore conflicts of dependencies between the
+	// packages that are all to be updated, ignore them
+	// this should be save, since their compatibility has already been
+	// checked in the tentative GOPATH
+	ignoring := map[string]bool{}
+	for _, candidate := range candidates {
+		ignoring[candidate.Path] = true
+	}
+
 	for _, candidate := range candidates {
 		//fmt.Printf("candidate: %v\n", candidate.Path)
 		//if tentative.Original.PkgExists(candidate.Path) {
 		if tentative.Original.PkgExists(candidate.Path) {
 			//	fmt.Println("exists")
 			//errs := tentative.checkConflicts(candidate.Path)
-			errs := tentative.checkConflicts(candidate)
+			//errs := tentative.checkConflicts(candidate)
+			errs := tentative.Original.db.hasConflict(candidate, ignoring)
 			if len(errs) > 0 {
 				//		fmt.Printf("errors: %v\n", len(errs))
 				//conflicts[candidate.Path] = errs

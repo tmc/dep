@@ -1,5 +1,13 @@
 # Concept
 
+- Problem: 
+-   if a registered old version of package 'a' depends on an
+   registered old version of package 'b' and package 'b' changed
+   in incompatible ways and package 'a' was updated to be compatible with the new version of 'b', then the update of
+   package 'a' should work, but it doesn't, since it still finds
+   incompatibilities between the former package 'a' and the to be updated package 'b'.
+   to fix it, we have to exclude all packages that are to be updated from the dependency list that is checked in the original database.
+
 - make exported methods part of type and make a fake for returned unexported types with exported methods/fields
 
 // vielleich ignorieren - geht ja eigentlich nur um kompatibilität
