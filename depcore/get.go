@@ -72,7 +72,11 @@ func (o *Environment) Get(pkgPath string, confirmation func(candidates ...*gdf.P
 	var er error
 	conflicts, er = t.updatePackage(pkgPath, confirmation)
 
-	if er != nil || len(conflicts) > 0 {
+	if len(conflicts) > 0 {
+		er = fmt.Errorf("Error: there are %v conflicts", len(conflicts))
+	}
+
+	if er != nil {
 		dir := filepath.Dir(t.GOPATH)
 		new_path := filepath.Join(dir, fmt.Sprintf("gopath_%v", time.Now().UnixNano()))
 		os.Rename(t.GOPATH, new_path)
