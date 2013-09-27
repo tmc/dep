@@ -146,7 +146,6 @@ Proceed`,
 			}
 
 			printConflicts(conflicts)
-			os.Exit(1)
 		}
 		if e != nil {
 			panic(e.Error())
