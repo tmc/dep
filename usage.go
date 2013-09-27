@@ -38,6 +38,7 @@ Options:
     -json             Print in machine readable json format
     -y                Answer all questions with 'yes'
     -no-warn          Suppress warnings
+    -panic            Panic on errors
 
 The commands are:
 

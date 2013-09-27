@@ -16,6 +16,7 @@ var (
 	argJson    bool
 	argYes     bool
 	argNoWarn  bool
+	argPanic   bool
 	pkg        *gdf.Package
 	pkgPath    string
 )
@@ -34,6 +35,7 @@ func initV1() {
 	flag.BoolVar(&argJson, "json", false, "print in readable json format")
 	flag.BoolVar(&argYes, "y", false, "answer all questions with 'yes'")
 	flag.BoolVar(&argNoWarn, "no-warn", false, "suppress warnings")
+	flag.BoolVar(&argPanic, "panic", false, "panic on errors")
 }
 
 func init() {
@@ -49,14 +51,15 @@ func main() {
 	if argVerbose && argJson {
 		panic("-verbose and -json option are mutually exclusive")
 	}
-	/*
+
+	if !argPanic {
 		defer func() {
 			if r := recover(); r != nil {
 				fmt.Printf("ERROR: %v, aborting\n", r)
 				os.Exit(1)
 			}
 		}()
-	*/
+	}
 
 	if argVerbose {
 		depcore.VERBOSE = true
