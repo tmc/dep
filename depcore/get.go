@@ -72,12 +72,11 @@ func (o *Environment) Get(pkgPath string, confirmation func(candidates ...*gdf.P
 	var er error
 	conflicts, er = t.updatePackage(pkgPath, confirmation)
 
-	if er != nil {
+	if er != nil || len(conflicts) > 0 {
 		dir := filepath.Dir(t.GOPATH)
 		new_path := filepath.Join(dir, fmt.Sprintf("gopath_%v", time.Now().UnixNano()))
 		os.Rename(t.GOPATH, new_path)
 		err = fmt.Errorf(er.Error()+"\ncheck or remove the temporary gopath at %s\n", new_path)
 	}
-
 	return
 }
