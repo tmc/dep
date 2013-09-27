@@ -176,6 +176,9 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation fu
 
 	//tentative.mkdb()
 	conflicts = tentative.Init()
+	if VERBOSE {
+		fmt.Println("tentative GOPATH initialized")
+	}
 	/*
 	   err = createDB(tentative.GOPATH)
 	   if err != nil {
