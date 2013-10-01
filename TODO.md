@@ -1,5 +1,11 @@
 # Concept
 
+- on update: checkout of the given rev-file does not work
+
+- make backups of all updated packages, not just the ones that have been explicitely updated
+
+- after successfull update, register all packages that have been moved, not only the ones one the top level of a repo
+
 - Problem: 
 -   if a registered old version of package 'a' depends on an
    registered old version of package 'b' and package 'b' changed
