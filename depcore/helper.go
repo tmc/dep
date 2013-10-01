@@ -25,10 +25,11 @@ var bzrRevRe = regexp.MustCompile(`revision-id:\s*([^\s]+)`)
 
 // maps a package path to a vcs and a revision
 type revision struct {
-	VCM    string
-	Rev    string
-	Parent string
-	Tag    string // TODO check if revision is a tag and put it into the rev
+	VCM      string
+	Rev      string
+	Parent   string
+	Tag      string // TODO check if revision is a tag and put it into the rev
+	RepoRoot string
 }
 
 var revFileName = "dep-rev.json"

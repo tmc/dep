@@ -1,5 +1,11 @@
 # Concept
 
+- rework the rev-files:
+we need the repo-dir as property and only checkout this, we need the repo root
+also as part of the package information.
+changes in the repo root is also a package
+breakage
+
 - on update: checkout of the given rev-file does not work
 
 - make backups of all updated packages, not just the ones that have been explicitely updated

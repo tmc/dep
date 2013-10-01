@@ -241,7 +241,8 @@ func (o *Environment) getRevision(dir string, parent string) (rev revision) {
 		panic("unknown vcs command " + vcs.cmd)
 
 	}
-	return revision{vcs.cmd, r, parent, ""}
+	reporoot := _repoRoot(dir)
+	return revision{vcs.cmd, r, parent, "", o.PkgPath(reporoot)}
 }
 
 // for each import, get the revisions
