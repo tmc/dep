@@ -239,7 +239,7 @@ func (get *packageGetter) checkoutCmd(dir string, c string, args ...string) erro
 	cmd.Stdout = &stdout
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("%s", stderr.String())
+		return fmt.Errorf("%s", stdout.String()+" "+stderr.String())
 	}
 	return nil
 }
