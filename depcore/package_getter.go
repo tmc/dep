@@ -30,7 +30,12 @@ func (get *packageGetter) repoPath(pkgPath string) string {
 		panic(err.Error())
 	}
 
-	return get.env.PkgPath(_repoRoot(dir))
+	str, err := relativePath(path.Join(get.env.GOPATH, "src"), dir)
+
+	if err != nil {
+		panic(err.Error())
+	}
+	return str
 }
 
 func (get *packageGetter) execGo(args ...string) error {

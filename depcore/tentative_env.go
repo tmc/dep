@@ -49,6 +49,7 @@ func (tempEnv *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 	for _, p := range tempEnv.allPackages() {
 		r := _repoRoot(p.Dir)
 		if skip[r] {
+			pkgs = append(pkgs, p)
 			continue
 		}
 
@@ -59,6 +60,7 @@ func (tempEnv *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 			revOld := o.getRevision(dirInOriginal, "")
 			if revNew.Rev == revOld.Rev {
 				skip[r] = true
+				pkgs = append(pkgs, p)
 				continue
 			}
 		}
@@ -188,6 +190,7 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation fu
 	if len(conflicts) == 0 {
 		if confirmation(candidates...) {
 			err = tentative.moveCandidatesToGOPATH(candidates...)
+			tentative.Original.db.registerPackages(false, candidates...)
 		}
 	}
 	return
