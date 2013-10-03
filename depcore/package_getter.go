@@ -200,7 +200,8 @@ func (get *packageGetter) checkout(rev revision) {
 	}
 
 	if checkoutErr != nil {
-		panic("can't checkout " + rev.RepoRoot + " rev " + rev.Rev + ":\n" + checkoutErr.Error())
+		p := path.Join(get.env.GOPATH, "src", rev.RepoRoot)
+		panic("can't checkout " + p + " rev " + rev.Rev + ":\n" + checkoutErr.Error())
 	}
 }
 
@@ -232,7 +233,7 @@ func (get *packageGetter) checkoutHg(dir string, rev string) error {
 
 func (get *packageGetter) checkoutCmd(dir string, c string, args ...string) error {
 	cmd := exec.Command(c, args...)
-	cmd.Dir = dir
+	cmd.Dir = path.Join(get.env.GOPATH, "src", dir)
 	cmd.Env = get.env.cmdEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stderr = &stderr

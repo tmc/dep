@@ -1,12 +1,43 @@
 # Concept
 
-- rework the rev-files:
-we need the repo-dir as property and only checkout this, we need the repo root
-also as part of the package information.
-changes in the repo root is also a package
-breakage
+- in order to solve conflicts we should allow a flag -overwrite that takes a json
+file with the following content:
 
-- on update: checkout of the given rev-file does not work
+
+[
+    {
+        "Path": "github.com/metakeule/dep/depcore",
+        "Imports": {
+            "github.com/mattn/go-sqlite3#*SQLiteDriver.Open": "(*SQLiteDriver) Open(string)(driver.Conn,error)",
+            "github.com/metakeule/exports#*Environment.Build": "(*Environment) Build() *build.Context",
+            "github.com/metakeule/exports#*Environment.LoadJson": "(*Environment) LoadJson([]byte)(*Package,error)",
+            "github.com/metakeule/exports#*Environment.Pkg": "(*Environment) Pkg(string) *Package",
+            "github.com/metakeule/exports#*Environment.PkgDir": "(*Environment) PkgDir(string) string",
+            "github.com/metakeule/exports#*Environment.PkgExists": "(*Environment) PkgExists(string) bool",
+            "github.com/metakeule/exports#*Environment.PkgIsInternal": "(*Environment) PkgIsInternal(string) bool",
+        },
+        "Exports": {
+            "*Environment.Close": "(*Environment) Close()",
+            "*Environment.Diff": "(*Environment) Diff(*github.com/metakeule/exports#Package)(*pkgDiff,error)"
+        },
+        "InitMd5": "b54df8630bc72ee6a819fe60de3c2738"
+    }
+]
+
+that will overwrite the registry information while comparing compatibility in a way that
+the compatibility information will be replaced by the one from the array
+
+- always ignore packages beginning with a special backup identifier that are backups from dep get
+
+
+
+- in order to solve conflicts we should allow a flag -solve
+that takes a new database of the original GOPATH as it is
+and checks the compatibility against this database
+and initializes the new database with the tentative packages instead of the
+original, the problem is that the gdf library uses the symbols of the same GOPATH but
+it should now use the types and symbols from the tentative gopath
+
 
 - make backups of all updated packages, not just the ones that have been explicitely updated
 
