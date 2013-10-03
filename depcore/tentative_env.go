@@ -94,22 +94,15 @@ func relativePath(parentPath, childPath string) (rel string, err error) {
 }
 
 func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package) (err error) {
-	//func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...string) (err error) {
 	o := tempEnv.Original
 	visited := map[string]bool{}
 
 	for _, pkg := range pkgs {
-		//revBefore := o.getRevisionGit(o.PkgDir(pkg.Path))
-		//fmt.Printf("rev before: %#v\n", revBefore)
-		//dir := tempEnv.PkgDir(pkg.Path)
-		//dir := tempEnv.PkgDir(pkg)
 		dir := pkg.Dir
-		//fmt.Printf("rev in temp: %#v\n", tempEnv.getRevisionGit(dir))
 		_, e := os.Stat(dir)
 
 		// already moved
 		if e != nil {
-			// fmt.Printf("already moved: %#v\n", dir)
 			continue
 		}
 
@@ -139,8 +132,6 @@ func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package
 		if err != nil {
 			return
 		}
-		//revAfter := o.getRevisionGit(o.PkgDir(pkg.Path))
-		//fmt.Printf("rev after: %#v\n", revAfter)
 	}
 	return
 }
@@ -159,38 +150,18 @@ func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package
 
 // return no errors for conflicts, only for severe errors
 func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, err error) {
-	//conflicts = map[string]map[string][3]string{}
-	err = tentative.getPackage(pkg)
+	g := newPackageGetter(tentative.Environment, pkg)
+	err = g.get()
 	if err != nil {
 		return
 	}
 
-	_, errNotExists := os.Stat(path.Join(tentative.GOPATH, "src", pkg, revFileName))
-
-	if errNotExists == nil {
-		//tempEnv := NewEnv(tmpDir)
-		err = tentative.checkoutTrackedImports(pkg)
-
-		if err != nil {
-			return
-		}
-	}
-
-	//tentative.mkdb()
 	conflicts = tentative.Init()
 	if VERBOSE {
 		fmt.Println("tentative GOPATH initialized")
 	}
-	/*
-	   err = createDB(tentative.GOPATH)
-	   if err != nil {
-	       return
-	   }
-	*/
 
-	//conflicts = tentative.CheckIntegrity()
 	if len(conflicts) > 0 {
-		// fmt.Println("NO INTEGRITY for TENTATIVE")
 		err = fmt.Errorf("tentative GOPATH %s is not integer", tentative.GOPATH)
 		return
 	}
@@ -207,16 +178,9 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation fu
 	}
 
 	for _, candidate := range candidates {
-		//fmt.Printf("candidate: %v\n", candidate.Path)
-		//if tentative.Original.PkgExists(candidate.Path) {
 		if tentative.Original.PkgExists(candidate.Path) {
-			//	fmt.Println("exists")
-			//errs := tentative.checkConflicts(candidate.Path)
-			//errs := tentative.checkConflicts(candidate)
 			errs := tentative.Original.db.hasConflict(candidate, ignoring)
 			if len(errs) > 0 {
-				//		fmt.Printf("errors: %v\n", len(errs))
-				//conflicts[candidate.Path] = errs
 				conflicts[candidate.Path] = errs
 			}
 		}

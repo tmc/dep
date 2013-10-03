@@ -26,8 +26,8 @@ func (ø *db) GetImported(importedPkg string) (imps []*imp, err error) {
 func (ø *db) GetPackage(packagePath string, withExports bool, withImports bool) (p *dbPkg, exps []*exp, imps []*imp, err error) {
 	var row *sql.Row
 	p = &dbPkg{}
-	row = ø.QueryRow("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
-	err = row.Scan(&p.Package, &p.ImportsMd5, &p.ExportsMd5, &p.InitMd5, &p.JsonMd5, &p.Json)
+	row = ø.QueryRow("select package,  initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
+	err = row.Scan(&p.Package, &p.InitMd5, &p.JsonMd5, &p.Json)
 	if err != nil {
 		return
 	}
@@ -72,14 +72,14 @@ func (ø *db) GetPackage(packagePath string, withExports bool, withImports bool)
 func (ø *db) GetAllPackages() (ps []*dbPkg, err error) {
 	var rows *sql.Rows
 	ps = []*dbPkg{}
-	rows, err = ø.Query("select package, importsmd5, exportsmd5,  initmd5, jsonmd5, json from packages")
+	rows, err = ø.Query("select package, initmd5, jsonmd5, json from packages")
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		p := &dbPkg{}
-		err = rows.Scan(&p.Package, &p.ImportsMd5, &p.ExportsMd5, &p.InitMd5, &p.JsonMd5, &p.Json)
+		err = rows.Scan(&p.Package, &p.InitMd5, &p.JsonMd5, &p.Json)
 		if err != nil {
 			return
 		}

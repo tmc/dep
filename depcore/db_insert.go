@@ -16,13 +16,13 @@ func (ø *db) InsertPackages(p []*dbPkg, e []*exp, im []*imp) (err error) {
 	if err != nil {
 		return
 	}
-	stmt, err := tx.Prepare("insert or replace into packages(package, importsmd5, exportsmd5, initmd5, json, jsonmd5) values(?, ?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("insert or replace into packages(package, initmd5, json, jsonmd5) values(?, ?, ?, ?)")
 	if err != nil {
 		return
 	}
 	defer stmt.Close()
 	for i := 0; i < len(p); i++ {
-		_, err = stmt.Exec(p[i].Package, p[i].ImportsMd5, p[i].ExportsMd5, p[i].InitMd5, p[i].Json, p[i].JsonMd5)
+		_, err = stmt.Exec(p[i].Package, p[i].InitMd5, p[i].Json, p[i].JsonMd5)
 		if err != nil {
 			return
 		}

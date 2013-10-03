@@ -83,8 +83,6 @@ func (ø *db) CreateTables() {
 		`
         create table packages (
             package         text not null primary key,
-            importsmd5      text not null,
-            exportsmd5      text not null,
             initmd5         text not null,
             jsonmd5         text not null,
             json            blob not null
@@ -131,6 +129,7 @@ func initDB() {
 						fmt.Println(data...)
 					}
 		*/
+		//fmt.Println(data...)
 	}
 
 	dBWrapper.AfterAll = func(conn driver.Conn, event string, data ...interface{}) {

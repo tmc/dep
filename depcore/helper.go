@@ -130,17 +130,25 @@ func (env *testEnv) prepare() {
 }
 
 func (env *testEnv) Get(pkg, rev string) error {
-	return env.inner.getWithImports(pkg, rev)
+	g := newPackageGetter(env.inner, pkg)
+	r := revision{}
+	r.RepoRoot = g.repoPath(pkg)
+	r.Rev = rev
+	r.VCM = "git"
+	return g.getPkgRev(r)
 }
 
 func (ev *testEnv) Update(pkg, rev string) error {
 	defer ev.inner.Close()
 	env := ev.inner
 
-	err := env.getPackage(pkg)
+	g := newPackageGetter(env, pkg)
+
+	err := g.getPkgRev(revision{VCM: "git", Rev: rev})
 	if err != nil {
 		panic(err.Error())
 	}
+
 	var dir string
 	var internal bool
 	dir, internal, err = env.PkgDir(pkg)
@@ -151,18 +159,13 @@ func (ev *testEnv) Update(pkg, rev string) error {
 		panic(fmt.Sprintf("can't update internal package %s", pkg))
 	}
 	master := getmasterRevision(pkg, dir)
-	env.checkoutImport(dir, revision{VCM: "git", Rev: rev})
-	err = env.checkoutTrackedImports(pkg)
-	if err != nil {
-		panic(err.Error())
-	}
 
 	// check, if revisions are correct
 	if env.getRevisionGit(path.Join(env.GOPATH, "src", pkg)) != rev {
 		panic(fmt.Sprintf("revision %#v not checked out for package %#v\n", rev, pkg))
 	}
 
-	depsBefore, eb := env.trackedImportRevisions(pkg)
+	depsBefore, eb := g.trackedRevisions(pkg)
 	if eb != nil {
 		panic(eb.Error())
 	}
@@ -200,7 +203,7 @@ func (ev *testEnv) Update(pkg, rev string) error {
 	if r := env.getRevisionGit(pdir); r != master {
 		return fmt.Errorf("revision after update %#v not matching master: %#v in package %#v\n", r, master, pkg)
 	}
-	depsAfter, e := env.trackedImportRevisions(pkg)
+	depsAfter, e := g.trackedRevisions(pkg)
 	if e != nil {
 		panic(e.Error())
 	}

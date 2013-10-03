@@ -4,17 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	// "github.com/metakeule/dep/db"
 	"github.com/metakeule/gdf"
 	"io/ioutil"
-	"path"
-	"path/filepath"
-	"runtime"
-	// "runtime"
-	// "time"
-	// "github.com/metakeule/cli"
 	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -25,8 +22,6 @@ type Environment struct {
 	tentative  *tentativeEnvironment
 	IgnorePkgs map[string]bool
 }
-
-//var P = "huho"
 
 func NewEnv(gopath string) (ø *Environment) {
 	if gopath == "" {
@@ -50,8 +45,46 @@ func NewEnv(gopath string) (ø *Environment) {
 	return
 }
 
+var exampleRegExp = regexp.MustCompile("example(s?)$")
+
 func (env *Environment) shouldIgnorePkg(pkg string) bool {
+	if exampleRegExp.MatchString(pkg) {
+		return true
+	}
 	return env.IgnorePkgs[pkg]
+}
+
+func (env *Environment) RevFile(pkg string) string {
+	return path.Join(env.GOPATH, "src", pkg, revFileName)
+}
+
+// for each import, get the revisions
+func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pkg *gdf.Package, parent string) {
+	for im, _ := range pkg.ImportedPackages {
+		if _, has := revisions[im]; !has {
+			p, err := o.Pkg(im)
+			if err != nil {
+				panic(fmt.Sprintf("package %s does not exist", im))
+			}
+			//d, _ := p.Dir()
+			var d string
+			var internal bool
+			d, internal, err = o.PkgDir(im)
+			if internal {
+				continue
+			}
+			revisions[im] = o.getRevision(d, pkg.Path)
+			o.recursiveImportRevisions(revisions, p, pkg.Path)
+		}
+	}
+}
+
+func (env *Environment) HasRevFile(pkg string) bool {
+	_, err := os.Stat(env.RevFile(pkg))
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func (env *Environment) newTentative() (t *tentativeEnvironment) {
@@ -88,7 +121,6 @@ func (o *Environment) scan(dir string) (b []byte, internal bool) {
 	if err != nil {
 		panic(err.Error())
 	}
-	//fmt.Println(dir)
 	b, internal = o.pkgJson(o.PkgPath(dir))
 	b = append(b, []byte("\n")...)
 	return
@@ -98,7 +130,9 @@ func (o *Environment) scan(dir string) (b []byte, internal bool) {
 func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *gdf.Package, includeImported bool) (dbExps []*exp, dbImps []*imp) {
 	p := &dbPkg{}
 	p.Package = pkg.Path
-	p.Json = asJson(pkg)
+	p.Json = niceJson(pkg)
+	p.InitMd5 = pkg.InitMd5
+	p.JsonMd5 = pkg.JsonMd5()
 	pkgMap[pkg.Path] = p
 	dbExps = []*exp{}
 	dbImps = []*imp{}
@@ -245,27 +279,6 @@ func (o *Environment) getRevision(dir string, parent string) (rev revision) {
 	return revision{vcs.cmd, r, parent, "", o.PkgPath(reporoot)}
 }
 
-// for each import, get the revisions
-func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pkg *gdf.Package, parent string) {
-	for im, _ := range pkg.ImportedPackages {
-		if _, has := revisions[im]; !has {
-			p, err := o.Pkg(im)
-			if err != nil {
-				panic(fmt.Sprintf("package %s does not exist", im))
-			}
-			//d, _ := p.Dir()
-			var d string
-			var internal bool
-			d, internal, err = o.PkgDir(im)
-			if internal {
-				continue
-			}
-			revisions[im] = o.getRevision(d, pkg.Path)
-			o.recursiveImportRevisions(revisions, p, pkg.Path)
-		}
-	}
-}
-
 // setup the env for a cmd
 func (env *Environment) cmdEnv() []string {
 	return []string{
@@ -273,36 +286,6 @@ func (env *Environment) cmdEnv() []string {
 		fmt.Sprintf(`GOROOT=%s`, env.GOROOT),
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
-}
-
-func (env *Environment) checkoutCmd(dir string, c string, args ...string) error {
-	cmd := exec.Command(c, args...)
-	cmd.Dir = dir
-	cmd.Env = env.cmdEnv()
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("%s", stderr.String())
-	}
-	return nil
-}
-
-// does a checkout for Bzr VCM
-func (env *Environment) checkoutBzr(dir string, rev string) error {
-	return env.checkoutCmd(dir, "bzr", "update", "-r", rev)
-}
-
-// does a checkout for Git VCM
-func (env *Environment) checkoutGit(dir string, rev string) error {
-	return env.checkoutCmd(dir, "git", "checkout", rev)
-}
-
-// does a checkout for Hg VCM
-func (env *Environment) checkoutHg(dir string, rev string) error {
-	return env.checkoutCmd(dir, "hg", "update", "-r", rev)
 }
 
 // runs go test in the given dir
@@ -313,113 +296,22 @@ func (o *Environment) goTest(dir string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-// reads the tracked revisions for imports as defined in the revFile
-func (env *Environment) trackedImportRevisions(pkg string) (r map[string]revision, err error) {
-	var data []byte
-	data, err = ioutil.ReadFile(path.Join(env.GOPATH, "src", pkg, revFileName))
-	if err != nil {
-		return
-	}
-
-	r = map[string]revision{}
-	err = json.Unmarshal(data, &r)
-	return
-}
-
-// checks out the tracked imports as defined in revFile
-func (env *Environment) checkoutTrackedImports(pkg string) error {
-	revisions, err := env.trackedImportRevisions(pkg)
-	if err != nil {
-		return err
-	}
-	visited := map[string]bool{}
-	for p, rev := range revisions {
-		dir, internal, e := env.PkgDir(p)
-		if e != nil {
-			panic(fmt.Sprintf("can't checkout tracked import %s of package %s: %s",
-				p, pkg, e))
-		}
-		if internal {
-			continue
-		}
-		r := _repoRoot(dir)
-		if visited[r] {
-			continue
-		}
-		visited[r] = true
-
-		env.checkoutImport(r, rev)
-	}
-	return nil
-}
-
 // returns all packages in env.GOPATH/src
 func (env *Environment) allPackages() (a []*gdf.Package) {
 	a = []*gdf.Package{}
 	prs := newSubPackages(env)
 	err := filepath.Walk(path.Join(env.GOPATH, "src"), prs.Walker)
 	if err != nil {
-		//if err == filepath.SkipDir {
-		//	return
-		//}
 		panic(err.Error())
 	}
-	//fmt.Println("all package walked")
 	for p, _ := range prs.packages {
-		/*
-			if DEBUG {
-				fmt.Printf("pkg %s\n", p)
-			}
-		*/
 		pk, e := env.Pkg(p)
 		if e != nil {
-			//fmt.Printf("error with pkg %s: %s\n", pk.Path, e.Error())
 			continue
 		}
 		a = append(a, pk)
 	}
 	return
-}
-
-// runs go get -u -d for the pkg
-func (env *Environment) getPackage(pkg string) error {
-	// With get -d we don't install the packages
-	// TODO check if we want to install them at a later point
-	// e.g. after the dependant packages have been checked out
-	// to the correct revisions
-	args := []string{"get", "-u", "-d", pkg}
-	cmd := exec.Command("go", args...)
-	cmd.Env = env.cmdEnv()
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("Error while go getting %#v:%s\n", pkg, stdout.String()+"\n"+stderr.String())
-	}
-	return nil
-}
-
-// checkous revision rev of directory d
-func (env *Environment) checkoutImport(d string, rev revision) {
-	var checkoutErr error
-	switch rev.VCM {
-	case "bzr":
-		checkoutErr = env.checkoutBzr(d, rev.Rev)
-	case "git":
-		checkoutErr = env.checkoutGit(d, rev.Rev)
-	case "hg":
-		checkoutErr = env.checkoutHg(d, rev.Rev)
-	case "svn":
-		panic("unsupported VCM svn for repository " + d)
-	default:
-		panic("unsupported VCM " + rev.VCM + " for repository " + d)
-	}
-
-	if checkoutErr != nil {
-		panic("can't checkout " + d + " rev " + rev.Rev + ":\n" + checkoutErr.Error())
-	}
 }
 
 func (env *Environment) cleandb() {
@@ -462,20 +354,19 @@ func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string
 	//fmt.Println("check integrity")
 	//env.mkdb()
 	conflicts = map[string]map[string][3]string{}
-	/*
-		conflicts["#dep-registry-orphan#"] = map[string][3]string{}
-		conflicts["#dep-registry-inconsistency#"] = map[string][3]string{}
+	///*
+	conflicts["#dep-registry-orphan#"] = map[string][3]string{}
+	conflicts["#dep-registry-inconsistency#"] = map[string][3]string{}
 
-
-		defer func() {
-			if len(conflicts["#dep-registry-orphan#"]) == 0 {
-				delete(conflicts, "#dep-registry-orphan#")
-			}
-			if len(conflicts["#dep-registry-inconsistency#"]) == 0 {
-				delete(conflicts, "#dep-registry-inconsistency#")
-			}
-		}()
-	*/
+	defer func() {
+		if len(conflicts["#dep-registry-orphan#"]) == 0 {
+			delete(conflicts, "#dep-registry-orphan#")
+		}
+		if len(conflicts["#dep-registry-inconsistency#"]) == 0 {
+			delete(conflicts, "#dep-registry-inconsistency#")
+		}
+	}()
+	//*/
 	pkgs := map[string]bool{}
 
 	//ps := env.allPackages()
@@ -553,29 +444,5 @@ func (o *Environment) loadJson(pkgPath string) (ø *gdf.Package) {
 	if err != nil {
 		panic(err.Error())
 	}
-	return
-}
-
-func (env *Environment) getRev(pkg string, rev string) {
-	err := env.getPackage(pkg)
-	if err != nil {
-		panic(err.Error())
-	}
-	dir, internal, e := env.PkgDir(pkg)
-	if e != nil {
-		panic(e.Error())
-	}
-	if internal {
-		panic(fmt.Sprintf("can't get revision of internal package %s", pkg))
-	}
-	r := revision{}
-	r.VCM = "git"
-	r.Rev = rev
-	env.checkoutImport(dir, r)
-}
-
-func (env *Environment) getWithImports(pkg string, pkgRev string) (err error) {
-	env.getRev(pkg, pkgRev)
-	err = env.checkoutTrackedImports(pkg)
 	return
 }

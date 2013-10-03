@@ -38,10 +38,6 @@ func initV1() {
 	flag.BoolVar(&argPanic, "panic", false, "panic on errors")
 }
 
-func init() {
-	initV1()
-}
-
 func main() {
 	flag.Usage = func() {
 		fmt.Println(usage)

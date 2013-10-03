@@ -1,12 +1,10 @@
 package depcore
 
 type dbPkg struct {
-	Package    string
-	JsonMd5    string
-	Json       []byte
-	ImportsMd5 string
-	ExportsMd5 string
-	InitMd5    string
+	Package string
+	JsonMd5 string
+	Json    []byte
+	InitMd5 string
 }
 
 type exp struct {
