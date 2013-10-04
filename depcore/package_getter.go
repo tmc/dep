@@ -60,6 +60,30 @@ func (get *packageGetter) goInstall(pkg string) error { return get.execGo("insta
 
 // get an import with an optional revision
 // the done map has repoPaths that already have been handled
+func (get *packageGetter) getByRev(pkgPath string, rev string, vcm string) (err error) {
+	if !get.env.PkgExists(pkgPath) {
+		err = get.goGet(pkgPath)
+		if err != nil {
+			return
+		}
+	}
+
+	repoPath := get.repoPath(pkgPath)
+	r := revision{}
+	r.RepoRoot = repoPath
+	r.Rev = rev
+	r.VCM = vcm
+
+	if rev != "" {
+		get.checkout(r)
+	}
+	done := map[string]bool{repoPath: true}
+	err = get.getImports(pkgPath, done)
+	return
+}
+
+// get an import with an optional revision
+// the done map has repoPaths that already have been handled
 func (get *packageGetter) getImport(pkgPath string, rev *revision, done map[string]bool) (err error) {
 	if !get.env.PkgExists(pkgPath) {
 		err = get.goGet(pkgPath)
@@ -126,6 +150,10 @@ func (get *packageGetter) getPkgRev(rev revision) (err error) {
 	err = get.goGet(get.pkgPath)
 	if err != nil {
 		return
+	}
+
+	if rev.RepoRoot == "" {
+		return fmt.Errorf("no RepoRoot for package %s in GOPATH %s", get.pkgPath, get.env.GOPATH)
 	}
 
 	get.checkout(rev)

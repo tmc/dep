@@ -144,7 +144,10 @@ func (ev *testEnv) Update(pkg, rev string) error {
 
 	g := newPackageGetter(env, pkg)
 
-	err := g.getPkgRev(revision{VCM: "git", Rev: rev})
+	//err := g.getPkgRev(revision{VCM: "git", Rev: rev, RepoRoot: g.repoPath(pkg)})
+	//err := g.getImport(pkg, rev, map[string]bool{})
+	err := g.getByRev(pkg, rev, "git")
+
 	if err != nil {
 		panic(err.Error())
 	}
