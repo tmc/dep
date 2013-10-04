@@ -43,6 +43,20 @@ func initV1() {
 	flag.StringVar(&Args.Override, "override", "", "pass an overwrite file")
 }
 
+var cmdsWithoutPkgDir = map[string]bool{
+	"backups-cleanup":  true,
+	"gopath-cleanup":   true,
+	"registry-cleanup": true,
+	"init":             true,
+	"check":            true,
+	"dump":             true,
+}
+
+var cmdsWithoutExistingPkg = map[string]bool{
+	"unregister": true,
+	"get":        true,
+}
+
 func main() {
 	flag.Usage = func() { S.Out(usage) }
 
@@ -71,22 +85,24 @@ func main() {
 	cmd := args[0]
 
 	env.Open()
-	if len(env.IgnorePkgs) > 0 && !Args.NoWarn {
-		S.Warn("ignoring packages in %s\n\n", filepath.Join(env.GOPATH, ".depignore"))
+	if len(env.IgnorePkgs) > 0 {
+		S.Warn("ignoring packages in %s", filepath.Join(env.GOPATH, ".depignore"))
 	}
 
 	if cmd != "get" && Args.Override != "" {
 		S.Error("flag -override is only for dep get command")
 	}
 
-	if cmd != "init" && cmd != "check" {
+	if !cmdsWithoutPkgDir[cmd] {
+		//if cmd != "init" && cmd != "check" {
 		if len(args) == 2 {
 			Args.PkgPath = args[1]
 		} else {
 			Args.PkgPath = S.DefaultPackagePath()
 		}
 
-		if cmd != "unregister" && cmd != "get" {
+		if !cmdsWithoutExistingPkg[cmd] {
+			//if cmd != "unregister" && cmd != "get" {
 			S.Package(Args.PkgPath)
 		}
 

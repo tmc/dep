@@ -2,6 +2,7 @@ package depcore
 
 import (
 	"fmt"
+	"github.com/metakeule/fmtdate"
 	"github.com/metakeule/gdf"
 	"os"
 	"path"
@@ -47,9 +48,13 @@ func (tent *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 	return
 }
 
+func now() string {
+	return fmtdate.Format("YYYY-MM-DD-hh:mm:ss", time.Now())
+}
+
 // move directory to a backup
 func moveToBackup(dir string) (err error) {
-	backup := dir + fmt.Sprintf("_%v"+backupString, time.Now().UnixNano())
+	backup := dir + fmt.Sprintf("_%v"+BackupPostFix, now())
 	err = os.Rename(dir, backup)
 	return
 }
@@ -182,6 +187,12 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 			dB.Close()
 		}()
 
+		//if VERBOSE {
+		for _, override := range overrides {
+			fmt.Printf("overriding %s\n", override.Path)
+		}
+		//}
+
 		dB.registerPackages(false, overrides...)
 	}
 
@@ -198,7 +209,7 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 
 	for _, candidate := range candidates {
 		if tentative.Original.PkgExists(candidate.Path) {
-			errs := tentative.Original.db.hasConflict(candidate, ignoring)
+			errs := dB.hasConflict(candidate, ignoring)
 			if len(errs) > 0 {
 				conflicts[candidate.Path] = errs
 			}

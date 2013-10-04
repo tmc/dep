@@ -37,6 +37,8 @@ the compatibility information will be replaced by the one from the array
 
 - call the wrapper for a project "Sugar"
 
+- TODO allow overrides for check
+
 /*
     TODO
 

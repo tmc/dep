@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,32 +20,46 @@ type _sugar interface {
 	ExitUnless(question string)
 	Json(i interface{})
 	PrintConflicts(conflicts map[string]map[string][3]string)
+	ReadLines(reader io.Reader) ([]string, error)
 }
 
 var S _sugar = sugar(0)
 
 type sugar int
 
+// readLines reads a whole file into memory
+// and returns a slice of its lines.
+func (s sugar) ReadLines(in io.Reader) ([]string, error) {
+	var lines []string
+	scanner := bufio.NewScanner(in)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
+}
+
 // writes an error with a linefeed and exits
 func (s sugar) Error(format string, vals ...interface{}) {
-	fmt.Fprintf(os.Stderr, "ERROR: "+format+" aborting\n", vals)
+	fmt.Fprintf(os.Stderr, "ERROR: "+format+" aborting\n", vals...)
 	os.Exit(1)
 }
 
-// writes output with a linefeed
+// writes output with a linefeed and exits
 func (s sugar) Out(format string, vals ...interface{}) {
-	fmt.Fprintf(os.Stdout, format+"\n", vals)
+	fmt.Fprintf(os.Stdout, format+"\n", vals...)
 	os.Exit(0)
 }
 
 func (s sugar) Warn(format string, vals ...interface{}) {
-	fmt.Fprintf(os.Stderr, "Warning: "+format+"\n", vals)
+	if !Args.NoWarn {
+		fmt.Fprintf(os.Stderr, "--- Warning: "+format+" ---\n\n", vals...)
+	}
 }
 
 func (s sugar) DefaultPackagePath() string {
 	dir, err := os.Getwd()
 	if err != nil {
-		panic("can't get working directory: " + err.Error())
+		s.Error("can't get working directory: " + err.Error())
 	}
 	dir, err = filepath.Abs(dir)
 	return env.PkgPath(dir)

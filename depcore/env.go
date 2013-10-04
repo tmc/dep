@@ -48,9 +48,9 @@ func NewEnv(gopath string) (ø *Environment) {
 
 var exampleRegExp = regexp.MustCompile("example(s?)$")
 
-var backupString = "_backup_of_dep_update"
+var BackupPostFix = "_backup_of_dep_update"
 
-var backupRegExp = regexp.MustCompile(backupString + "$")
+var backupRegExp = regexp.MustCompile(BackupPostFix + "$")
 
 func (env *Environment) shouldIgnorePkg(pkg string) bool {
 	if exampleRegExp.MatchString(pkg) || backupRegExp.MatchString(pkg) {
@@ -210,6 +210,8 @@ func (o *Environment) Close() {
 	}
 }
 
+var TempGOPATHPreFix = "gopath_"
+
 func (o *Environment) mkTempDir() (dir string) {
 	stat, err := os.Stat(o.TMPDIR)
 	if err != nil {
@@ -219,7 +221,7 @@ func (o *Environment) mkTempDir() (dir string) {
 		panic(o.TMPDIR + " is a file. but should be a directory")
 	}
 
-	dir, err = ioutil.TempDir(o.TMPDIR, "gopath_")
+	dir, err = ioutil.TempDir(o.TMPDIR, TempGOPATHPreFix)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -479,6 +481,68 @@ func (o *Environment) loadJson(pkgPath string) (ø *gdf.Package) {
 	ø, err = o.LoadJson(data)
 	if err != nil {
 		panic(err.Error())
+	}
+	return
+}
+
+func (env *Environment) Dump() (all []*gdf.Package, err error) {
+	var allP []*dbPkg
+	allP, err = env.db.GetAllPackages()
+
+	if err != nil {
+		return
+	}
+
+	var allI []*imp
+	allI, err = env.db.GetAllImports()
+
+	if err != nil {
+		return
+	}
+	pkgImports := map[string]map[string]string{}
+
+	for _, dbI := range allI {
+		_, exists := pkgImports[dbI.Package]
+		if !exists {
+			pkgImports[dbI.Package] = map[string]string{}
+		}
+		pkgImports[dbI.Package][dbI.Import+"#"+dbI.Name] = dbI.Value
+	}
+
+	var allE []*exp
+	allE, err = env.db.GetAllExports()
+
+	if err != nil {
+		return
+	}
+	pkgExports := map[string]map[string]string{}
+
+	for _, dbE := range allE {
+		_, exists := pkgExports[dbE.Package]
+		if !exists {
+			pkgExports[dbE.Package] = map[string]string{}
+		}
+		pkgExports[dbE.Package][dbE.Name] = dbE.Value
+	}
+
+	all = make([]*gdf.Package, len(allP))
+
+	for i, p := range allP {
+		pkg := gdf.Package{}
+		pkg.Path = p.Package
+		pkg.InitMd5 = p.InitMd5
+		pkgImp, hasImp := pkgImports[p.Package]
+		if !hasImp {
+			pkgImp = map[string]string{}
+		}
+		pkg.Imports = pkgImp
+
+		pkgExp, hasExp := pkgExports[p.Package]
+		if !hasExp {
+			pkgExp = map[string]string{}
+		}
+		pkg.Exports = pkgExp
+		all[i] = &pkg
 	}
 	return
 }

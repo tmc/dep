@@ -4,6 +4,8 @@ import (
 	"database/sql"
 )
 
+// the the exports of the given package that were imported
+// by other packages
 func (ø *db) GetImported(importedPkg string) (imps []*imp, err error) {
 	var rows *sql.Rows
 	imps = []*imp{}
@@ -72,7 +74,7 @@ func (ø *db) GetPackage(packagePath string, withExports bool, withImports bool)
 func (ø *db) GetAllPackages() (ps []*dbPkg, err error) {
 	var rows *sql.Rows
 	ps = []*dbPkg{}
-	rows, err = ø.Query("select package, initmd5, jsonmd5, json from packages")
+	rows, err = ø.Query("select package, initmd5, jsonmd5, json from packages order by package asc")
 	if err != nil {
 		return
 	}

@@ -108,6 +108,75 @@ If you removed a package, you need to tell dep of the removal with
 
     dep unregister
 
+Typical Workflow
+----------------
+
+After you did set up your registry properly (with dep init) you should follow 
+the following workflow.
+
+- Installation of new package or update of a package:
+    - run 'dep check' to see if your environment is in consistent state, 
+      if not fix it first and then start again
+    - run 'dep get package-path'
+    - if it went well, run 'dep check' again, to see which packages changed
+    - run 'dep register package-path' for each package that changed
+    - run 'dep check' again until all changes are registered and everything is ok
+    - run your tests to check if everything still works (dep makes backups in the same directory as the original repo)
+    - run 'go install' for the packages you want to have installed
+    - run 'dep backups-cleanup' to remove all backup folders if you don't need 
+      them anymore
+
+- Fixing errors during the run of 'dep get':
+    - You will be given a temporary GOPATH where all packages that needed to be
+      installed or updated are installed. First you will want to know, if they are
+      consistent, so set the GOPATH environment variable to this folder and then run
+      'dep check' to see problems.
+    - If there are problems, you will have to decide what to do. Maybe you could fix
+      the packages and send them to upstream or you decide to better do no update.
+    - Don't forget to set your GOPATH back to the original one. Do it now.
+    - If the packages in the temporary GOPATH are fine, there will be conflicts
+      with your currently installed packages in the original GOPATH. 'dep get' should
+      have informed you exactly about the conflicts. Now you may either fix your
+      local packages or decide to do no update. If you choose the latter, run
+      'dep gopath-cleanup' to remove all temporary GOPATHs and you are done.
+    - If you want to fix the packages, first get the gdf for all of them by running
+      'dep gdf pkgPath'. The gdfs are in readable json format. Then put them into a
+      json file, say 'override.json' as part of a json array. Now you can modify
+      this file to match the exports that are requested by the packages that are
+      part of the 'dep get' process. Make sure that the package also works with
+      the exports as defined in your file. Then you could try further runs of 'dep get' with passing the override.json file as parameter: 'dep -override=override.json get packagepat'. This will take the gdfs given in the file overriding their definition in the registry. If everything runs fine, the new packages will
+      be moved to your GOPATH and then you should make sure that everything works as expected. After that you can run 'go install' and 'dep backups-cleanup'.
+
+- Fixing errors reported by 'dep check':
+    - 'dep check' does not report all errors, so you will have to run it until no
+      error is shown
+    - If 'dep check' reports errors, this means that the registry is not in sync with
+      the packages in your GOPATH. There might be several issues:
+
+      - If a package is not inside the registry, register it with 'dep register' and
+        run 'dep check' again. If you want to also register the packages that are imported by the package run  'dep register-included <package-path>'
+
+      - If a package is in the registry, but not in the GOPATH anymore and if that is 
+        what you wanted, run 'dep unregister' and then 'dep check' again. If you want
+        to remove all orphaned packages from the registry, run 'dep registry-cleanup'.
+
+      - If a package has changed and its old gdf is in the registry, but you want to
+        update it, run 'dep register <packagepath>' and then 'dep check' again. Otherwise you might want fix it.
+        You can get the changes between the current package and the registry for only one package with 'dep diff <packagepath>'.
+
+      - If a package is in conflict with another, you need to fix it and then update
+        the registry for the changed package with 'dep register <packagepath>'. Run 
+        'dep check' again to see if there are other issues.
+
+      - If a package that is part of a larger repo is in conflict, but you are not interested in it, you might put it into a '.depignore' file to tell 'dep' to ignore it. You might need to run 'dep unregister <packagepath>' additionally.
+      However this is a dangerous operation, especially if you want to use this package at a later time, but forget that you had put it into .depignore.
+      Packages in backup directories and directories with the name 'example' or 'examples' are always ignored.
+
+      - If you messed up the registry, but know that your packages have no conflicts,
+      you might as well run 'dep init' to regenerate the registry. This may take a while, depending on the number of packages you have.
+      
+      - Always run 'dep check' before running 'dep get' because without a solid
+
 Test
 ----
 

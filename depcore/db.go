@@ -1,6 +1,7 @@
 package depcore
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -232,4 +233,59 @@ func (dB *db) updatePackage(pkg string, confirmation func(candidates ...*gdf.Pac
 		return fmt.Errorf("update conflict")
 	}
 	return nil
+}
+
+// remove packages, that are in the db but that does not exist anymore
+// in the gopath
+func (dB *db) removeOrphanedPackages() (candidates map[string]bool, err error) {
+	var all []*dbPkg
+	all, err = dB.GetAllPackages()
+
+	if err != nil {
+		return
+	}
+
+	// candidates that should be deleted
+	candidates = map[string]bool{}
+
+	for _, p := range all {
+		if !dB.Environment.PkgExists(p.Package) {
+			candidates[p.Package] = true
+		}
+	}
+
+	// check for all candidates, if there are still existing packages that depends on them
+
+	// blocking packages: package <key> is imported by package <value> and therefore blocked
+	blockingPkgs := map[string]string{}
+
+	for c, _ := range candidates {
+		var imps []*imp
+		imps, err = dB.GetImported(c)
+		if err != nil {
+			return
+		}
+		for _, im := range imps {
+			if !candidates[im.Package] {
+				blockingPkgs[c] = im.Package
+			}
+		}
+	}
+
+	if len(blockingPkgs) > 0 {
+		msg := bytes.NewBufferString("There are packages that still exist and import orphaned packages and therefore block their removal from the registry:\n")
+		for a, b := range blockingPkgs {
+			msg.WriteString(fmt.Sprintf("\n\t%s is blocked by %s", a, b))
+		}
+		err = fmt.Errorf(msg.String() + "\n")
+		return
+	}
+
+	for c, _ := range candidates {
+		err = dB.DeletePackage(c)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
