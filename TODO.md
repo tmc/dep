@@ -29,7 +29,23 @@ the compatibility information will be replaced by the one from the array
 
 - always ignore packages beginning with a special backup identifier that are backups from dep get
 
+- at the end of a successful update/get show the backup folders and ask, if they should be deleted
 
+- at the end of an unsuccessfull update/get ask if the temporary folder should be kept
+
+- TODO do a separation between stdout and stderr
+
+- call the wrapper for a project "Sugar"
+
+/*
+    TODO
+
+    make tests for
+        - a package within a repo that is a subsubdir of GOPATH/src
+        - a package within a repo that is a subdir of GOPATH/src
+        - a package that is a repo that is a subsubdir of GOPATH/src
+        - a package that is a repo that is a subdir of GOPATH/src
+*/
 
 - in order to solve conflicts we should allow a flag -solve
 that takes a new database of the original GOPATH as it is

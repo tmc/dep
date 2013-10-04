@@ -16,75 +16,44 @@ type tentativeEnvironment struct {
 	Original *Environment
 }
 
-/*
-// checks if the updated version of package pkgPath is in conflict with
-// packages of the original environment
-//func (tent *tentativeEnvironment) checkConflicts(pkgPath string) (errs map[string][3]string) {
-func (tent *tentativeEnvironment) checkConflicts(pkg *gdf.Package) (errs map[string][3]string) {
-	//if !tent.Original.PkgExists(pkgPath) {
-	//	panic(fmt.Sprintf("package %s is not installed in %s/src", pkgPath, tent.Original.GOPATH))
-	//}
-	//p, err := tent.Pkg(pkgPath)
-	//if err != nil {
-	//	panic(fmt.Sprintf("can't check conflicts for package %s: %s", pkgPath, err))
-	//}
-	return tent.Original.db.hasConflict(pkg)
-}
-*/
-
 // closes db and remove the temporary gopath
 func (tent *tentativeEnvironment) Close() {
 	tent.Environment.Close()
 	os.RemoveAll(tent.GOPATH)
 }
 
-// returns the repos that are candidates for the real update
-// that will be a movement
-func (tempEnv *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
-	o := tempEnv.Original
-	//ps := tempEnv.allPackages()
+// returns the repos that are candidates for the real update that will be a movement
+func (tent *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 	skip := map[string]bool{}
 	pkgs = []*gdf.Package{}
 
-	for _, p := range tempEnv.allPackages() {
+	for _, p := range tent.allPackages() {
 		r := _repoRoot(p.Dir)
 		if skip[r] {
-			pkgs = append(pkgs, p)
 			continue
 		}
-
-		dirInOriginal, _, dirErr := o.PkgDir(p.Path)
-
-		if dirErr == nil {
-			revNew := tempEnv.getRevision(p.Dir, "")
-			revOld := o.getRevision(dirInOriginal, "")
-			if revNew.Rev == revOld.Rev {
+		origDir, _, err := tent.Original.PkgDir(p.Path)
+		// package is updated
+		if err == nil {
+			// package is updated only, if the revision changed
+			if tent.getRevision(p.Dir, "").Rev == tent.Original.getRevision(origDir, "").Rev {
 				skip[r] = true
-				pkgs = append(pkgs, p)
 				continue
 			}
 		}
+
 		pkgs = append(pkgs, p)
 	}
-
 	return
 }
 
+// move directory to a backup
 func moveToBackup(dir string) (err error) {
-	backup := dir + fmt.Sprintf("_backup_of_dep_update_%v", time.Now().UnixNano())
+	backup := dir + fmt.Sprintf("_%v"+backupString, time.Now().UnixNano())
 	err = os.Rename(dir, backup)
 	return
 }
 
-/*
-	TODO
-
-	make tests for
-		- a package within a repo that is a subsubdir of GOPATH/src
-		- a package within a repo that is a subdir of GOPATH/src
-		- a package that is a repo that is a subsubdir of GOPATH/src
-		- a package that is a repo that is a subdir of GOPATH/src
-*/
 // returns a path of absolute path that is relative to the given parent path
 func relativePath(parentPath, childPath string) (rel string, err error) {
 	if !strings.Contains(childPath, parentPath) {
@@ -95,8 +64,8 @@ func relativePath(parentPath, childPath string) (rel string, err error) {
 	return
 }
 
-func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package) (err error) {
-	o := tempEnv.Original
+func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (err error) {
+	o := tent.Original
 	visited := map[string]bool{}
 
 	for _, pkg := range pkgs {
@@ -114,7 +83,7 @@ func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package
 		}
 		visited[r] = true
 		var relRepoPath string
-		relRepoPath, err = relativePath(path.Join(tempEnv.GOPATH, "src"), r)
+		relRepoPath, err = relativePath(path.Join(tent.GOPATH, "src"), r)
 		if err != nil {
 			return
 		}
@@ -139,6 +108,35 @@ func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package
 }
 
 /*
+// todo make it work
+func hasConflict(pkg *gdf.Package, override *gdf.Package, ignoring map[string]bool) (errors map[string][3]string) {
+	errors = map[string][3]string{}
+
+	imp, err := dB.GetImported(pkg.Path)
+	if err != nil {
+		errors[pkg.Path] = [3]string{"error", err.Error(), ""}
+		return
+	}
+
+	for _, im := range imp {
+		if ignoring[im.Package] {
+			continue
+		}
+		key := fmt.Sprintf("%s:%s", im.Package, im.Name)
+		if val, exists := pkg.Exports[im.Name]; exists {
+			if val != im.Value {
+				errors[key] = [3]string{"changed", im.Value, val}
+			}
+			continue
+		}
+		//fmt.Printf("package %s \n\timports %s of %s, \n\tbut that has \n\t%s\n\n", im.Package, im.Name, pkg.Path, strings.Join(mapkeys(pkg.Exports), "\n\t"))
+		errors[key] = [3]string{"removed", im.Value, ""}
+	}
+	return
+}
+*/
+
+/*
    TODO
 
     (checkout / update is only for one package at a time)
@@ -149,9 +147,11 @@ func (tempEnv *tentativeEnvironment) moveCandidatesToGOPATH(pkgs ...*gdf.Package
    5. (for all candidates) check if updates packages won't break packages in GOPATH, if so return errors
    6. move candicate repos to path and go install them, update the registry
 */
-
+/*
+   tentative.Original.db
+*/
 // return no errors for conflicts, only for severe errors
-func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, err error) {
+func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, err error) {
 	g := newPackageGetter(tentative.Environment, pkg)
 	err = g.get()
 	if err != nil {
@@ -166,6 +166,23 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation fu
 	if len(conflicts) > 0 {
 		err = fmt.Errorf("tentative GOPATH %s is not integer", tentative.GOPATH)
 		return
+	}
+
+	dB := tentative.Original.db
+
+	// if we have overrides, make a copy of the db
+	// and change the overrides in the new db
+	if len(overrides) > 0 {
+		dB, err = tentative.Original.cpdb(tentative.Environment, "temp.db")
+		if err != nil {
+			return
+		}
+
+		defer func() {
+			dB.Close()
+		}()
+
+		dB.registerPackages(false, overrides...)
 	}
 
 	candidates := tentative.getCandidates()
@@ -189,7 +206,7 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, confirmation fu
 	}
 	if len(conflicts) == 0 {
 		if confirmation(candidates...) {
-			err = tentative.moveCandidatesToGOPATH(candidates...)
+			err = tentative.movePackages(candidates...)
 			tentative.Original.db.registerPackages(false, candidates...)
 		}
 	}

@@ -39,6 +39,7 @@ Options:
     -y                Answer all questions with 'yes'
     -no-warn          Suppress warnings
     -panic            Panic on errors
+    -override         Pass a file with GDF definitions that should be taken instead of the registry (only for dep get)
 
 The commands are:
 
@@ -49,7 +50,12 @@ The commands are:
                  of incompatibilities if there were any.
                  You should check, the integrity of your GOPATH with 'dep check'
                  before running 'dep get', otherwise dependencies might not be
-                 checked properly.               
+                 checked properly.
+                 If a file is passed with -override, it is considered a Json Array of GDFs that replace
+                 the corresponding entries in the registry for error checking.
+                 You might get them from a package with 'dep gdf'.
+                 Don't forget to register the changed packages after the update.
+                 You will get a list of them with 'dep check'.
     
     track        track the imported packages with their revisions in 
                  the dep-rev.json file inside the package directory

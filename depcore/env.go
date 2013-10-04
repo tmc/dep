@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/metakeule/gdf"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -47,10 +48,15 @@ func NewEnv(gopath string) (ø *Environment) {
 
 var exampleRegExp = regexp.MustCompile("example(s?)$")
 
+var backupString = "_backup_of_dep_update"
+
+var backupRegExp = regexp.MustCompile(backupString + "$")
+
 func (env *Environment) shouldIgnorePkg(pkg string) bool {
-	if exampleRegExp.MatchString(pkg) {
+	if exampleRegExp.MatchString(pkg) || backupRegExp.MatchString(pkg) {
 		return true
 	}
+
 	return env.IgnorePkgs[pkg]
 }
 
@@ -332,6 +338,36 @@ func (env *Environment) mkdb() {
 		dB.CreateTables()
 	}
 	env.db = dB
+}
+
+func (env *Environment) cpdb(dbenv *Environment, target string) (dB *db, err error) {
+	dbFile := path.Join(env.GOPATH, "dep.db")
+	var in, out *os.File
+	in, err = os.Open(dbFile)
+
+	if err != nil {
+		return
+	}
+
+	defer in.Close()
+	targetPath := path.Join(dbenv.GOPATH, target)
+
+	out, err = os.Create(targetPath)
+
+	if err != nil {
+		return
+	}
+
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+
+	if err != nil {
+		return
+	}
+
+	dB, err = db_open(dbenv, targetPath)
+	return
 }
 
 func (env *Environment) Init() (conflicts map[string]map[string][3]string) {
