@@ -44,17 +44,23 @@ Options:
   -panic              Panic on errors
   -override           Pass a file with GDF definitions that should 
                       be taken instead of the registry (only for dep get)
+  -skip-check         Skip the dep check at the beginning of the dep get. 
+                      Use this only if you know what you are doing
 
 The commands are:
 
   gdf                 Print the package's GDF as it is currently (ignoring the registry)
 
-  get                 go get -u the given package and its dependancies
+  get                 first does a 'dep check' for the GOPATH and then 
+                      go get -u the given package and its dependancies
                       without breaking installed packages. Returns a list
                       of incompatibilities if there were any.
-                      You should check, the integrity of your GOPATH with 
-                      'dep check' before running 'dep get', otherwise it  
-                      will not work properly.
+                      If there are dep-rev.json files within the package or any of their imports,
+                      the revisions will be respected. That might lead to a "downgrade" of some
+                      packages. However at the end of a successful 'dep get' you will be shown a
+                      list of repositories that changed. And there is chown from which revision to
+                      which the repository changed. So you might decide on your own, if that is what
+                      you wanted.
                       If a file is passed with -override, it is considered a 
                       Json-Array of GDFs that replace the corresponding entries 
                       in the registry when doing error checking.
@@ -64,6 +70,13 @@ The commands are:
                       You will get a list of them with 'dep check'.
                       'dep get' does not 'go install' the packages. So you might
                       want to do this after running 'dep get'.
+                      Please be aware that even if no GDF compatibility has been broken,
+                      the updated/installed packages themselves may not work (may be disfunctional).
+                      So check if they work correctly (e.g. by running 'go test ./...').
+                      For every changed package repository you get a backup directory in the same
+                      folder. So you might simply rename them in case anything goes wrong.
+                      If everything is fine, don't forget to register the changes in the 
+                      registry with 'dep register' or 'dep register-included'.
   
   track               track the imported packages with their revisions in 
                       the dep-rev.json file inside the package directory
@@ -96,6 +109,8 @@ The commands are:
                       in GOPATH/src. WARNING: this erases the former compatibility
                       informations in the registry and the checksums of the working
                       init functions.
+
+ init-functions       show the content of the init functions of the package
   
   check               checks the integrity of the whole GOPATH while respecting the
                       current registry.  

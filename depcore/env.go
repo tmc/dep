@@ -237,6 +237,8 @@ func (o *Environment) getRevCmd(dir string, c string, args ...string) string {
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
 
+	//fmt.Printf("running: %s %s\n\tin %s\n\twith GOPATH: %s\n", c, strings.Join(args, " "), dir, o.GOPATH)
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -246,7 +248,9 @@ func (o *Environment) getRevCmd(dir string, c string, args ...string) string {
 		fmt.Printf("error while running: %s %s in %s\n", c, strings.Join(args, " "), dir)
 		panic(stdout.String() + "\n" + stderr.String())
 	}
-	return strings.Trim(stdout.String(), "\n\r")
+	r := strings.Trim(stdout.String(), "\n\r")
+	//	fmt.Println(r)
+	return r
 }
 
 func (o *Environment) getRevisionGit(dir string) string {
@@ -264,6 +268,7 @@ func (o *Environment) getRevisionBzr(dir string) string {
 }
 
 func (o *Environment) getRevision(dir string, parent string) (rev revision) {
+	// fmt.Printf("getRevision for dir %s\n", dir)
 	vcs, root, err := vcsForDir(dir)
 	if err != nil {
 		panic(err.Error())
@@ -373,9 +378,19 @@ func (env *Environment) cpdb(dbenv *Environment, target string) (dB *db, err err
 }
 
 func (env *Environment) Init() (conflicts map[string]map[string][3]string) {
+	env.ClearCache()
 	env.cleandb()
 	env.mkdb()
 	ps := env.allPackages()
+	// fmt.Printf("init called for %s\n", env.GOPATH)
+	/*
+		for _, p := range ps {
+			if p.Path == "github.com/metakeule/deptest_mod/incompatible" {
+				fmt.Printf("registering %s with Struct %#v \n", p.Path, p.Exports["Struct"])
+			}
+		}
+	*/
+
 	env.db.registerPackages(true, ps...)
 	return env.checkIntegrity(ps...)
 }
@@ -410,40 +425,41 @@ func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string
 	//ps := env.allPackages()
 	//env.db.registerPackages(ps...)
 	for _, p := range ps {
+		pkgs[p.Path] = true
 		d, er := env.Diff(p, false)
 		if er != nil {
 			conflicts[p.Path] = map[string][3]string{
 				"#dep-registry-inconsistency#": [3]string{"missing", er.Error(), ""},
 			}
-			return
+			continue
 		}
 
 		if d != nil && len(d.Exports) > 0 {
 			conflicts[p.Path] = map[string][3]string{
 				"#dep-registry-inconsistency#": [3]string{"exports", strings.Join(d.Exports, "\n"), ""},
 			}
-			return
+			continue
 		}
 
 		if d != nil && len(d.Imports) > 0 {
 			conflicts[p.Path] = map[string][3]string{
 				"#dep-registry-inconsistency#": [3]string{"imports", strings.Join(d.Imports, "\n"), ""},
 			}
-			return
+			continue
 		}
 
-		pkgs[p.Path] = true
 		errs := env.db.hasConflict(p, map[string]bool{})
 		if len(errs) > 0 {
 			conflicts[p.Path] = errs
-			return
+			continue
 		}
 	}
 
-	if len(conflicts) > 0 {
-		return
-	}
-
+	/*
+		if len(conflicts) > 0 {
+			return
+		}
+	*/
 	dbpkgs, err := env.db.GetAllPackages()
 	if err != nil {
 		panic(err.Error())

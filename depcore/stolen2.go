@@ -303,9 +303,15 @@ func vcsForDir(p string) (vcs *vcsCmd, root string, err error) {
 		}
 	*/
 	dir := filepath.Clean(p)
-
+	_, errExists := os.Stat(dir)
+	if errExists != nil {
+		panic("dir does not exist: " + dir)
+	}
+	// fmt.Printf("cleaned dir: %s\n", dir)
 	for len(dir) > len(srcRoot) {
+		// fmt.Println("searching")
 		for _, vcs := range vcsList {
+			// fmt.Printf("looking for %s\n", filepath.Join(dir, "."+vcs.cmd))
 			if fi, err := os.Stat(filepath.Join(dir, "."+vcs.cmd)); err == nil && fi.IsDir() {
 				//return vcs, dir[len(srcRoot)+1:], nil
 				return vcs, dir, nil

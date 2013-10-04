@@ -216,12 +216,13 @@ func (dB *db) registerPackages(includeImported bool, pkgs ...*gdf.Package) {
 	}
 }
 
-func (dB *db) updatePackage(pkg string, confirmation func(candidates ...*gdf.Package) bool) error {
+func (dB *db) updatePackage(pkg string, confirmation func(candidates ...*gdf.Package) bool) (changed map[string][2]string, err error) {
 	tentative := dB.Environment.newTentative()
-	conflicts, err := tentative.updatePackage(pkg, nil, confirmation)
+	conflicts, changed, e := tentative.updatePackage(pkg, nil, confirmation)
 
-	if err != nil {
-		return err
+	if e != nil {
+		err = e
+		return
 	}
 
 	if len(conflicts) > 0 {
@@ -230,9 +231,10 @@ func (dB *db) updatePackage(pkg string, confirmation func(candidates ...*gdf.Pac
 			panic(e.Error())
 		}
 		fmt.Printf("%s\n", b)
-		return fmt.Errorf("update conflict")
+		err = fmt.Errorf("update conflict")
+		return
 	}
-	return nil
+	return
 }
 
 // remove packages, that are in the db but that does not exist anymore

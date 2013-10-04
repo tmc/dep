@@ -21,6 +21,7 @@ type _sugar interface {
 	Json(i interface{})
 	PrintConflicts(conflicts map[string]map[string][3]string)
 	ReadLines(reader io.Reader) ([]string, error)
+	PrintChanged(changed map[string][2]string)
 }
 
 var S _sugar = sugar(0)
@@ -74,6 +75,14 @@ func (s sugar) Package(pkgPath string) {
 	return
 }
 
+func (s sugar) PrintChanged(changed map[string][2]string) {
+	fmt.Println("The following repos have been changed: (old revision => new revision)")
+	for repo, v := range changed {
+		fmt.Printf("\n\t%s %s => %s", repo, v[0], v[1])
+	}
+	fmt.Println("\nDon't forget to run 'go test ./... in them. If you wan't to see what changed, run 'dep check'. To register the changed packages run 'dep register' for each package until 'dep check' complaints no more.\n")
+}
+
 func (s sugar) Json(i interface{}) {
 	b, err := json.MarshalIndent(i, "", "  ")
 	if err != nil {
@@ -83,6 +92,9 @@ func (s sugar) Json(i interface{}) {
 }
 
 func (s sugar) Ask(question string) bool {
+	if Args.Yes {
+		return true
+	}
 	fmt.Println(question + " (y/n)?")
 	answer := ""
 	_, err := fmt.Scanln(&answer)

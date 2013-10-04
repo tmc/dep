@@ -30,7 +30,38 @@ func runCmd(cmd string) (err error) {
 		if Args.Verbose {
 			S.Out("Looks ok: %s\n", pkg.Path)
 		}
+	case "init-functions":
+		if Args.Json {
+			S.Json(pkg.RawInits)
+			os.Exit(0)
+		}
+
+		if len(pkg.RawInits) == 0 {
+			fmt.Println("No init functions.")
+			os.Exit(0)
+		}
+
+		for file, initfn := range pkg.RawInits {
+			fmt.Printf("\n\nFile: %s\n%s\n", file, initfn)
+		}
+		os.Exit(0)
 	case "get":
+		if !Args.SkipCheck {
+			fmt.Println("running dep check, please wait...")
+			conflicts := env.CheckIntegrity()
+			if len(conflicts) > 0 {
+				if Args.Json {
+					S.Json(conflicts)
+					os.Exit(1)
+				}
+				S.PrintConflicts(conflicts)
+				os.Exit(1)
+			}
+			if Args.Verbose {
+				fmt.Sprintf("GOPATH %s is ok (%v packages)\n",
+					env.GOPATH, env.NumPkgsInRegistry())
+			}
+		}
 		over := []*gdf.Package{}
 		if Args.Override != "" {
 			b, e := ioutil.ReadFile(Args.Override)
@@ -44,7 +75,7 @@ func runCmd(cmd string) (err error) {
 			}
 		}
 
-		conflicts, e := env.Get(Args.PkgPath, over, func(candidates ...*gdf.Package) bool {
+		conflicts, changed, e := env.Get(Args.PkgPath, over, func(candidates ...*gdf.Package) bool {
 			if Args.Yes {
 				return true
 			}
@@ -76,6 +107,12 @@ Proceed`,
 		if e != nil {
 			S.Error(e.Error())
 		}
+		if Args.Json {
+			S.Json(changed)
+			os.Exit(0)
+		}
+		S.PrintChanged(changed)
+		os.Exit(0)
 	case "init":
 		S.ExitUnless("This will destroy any former registrations.\nProceed")
 		conflicts := env.Init()
@@ -165,8 +202,14 @@ Proceed`,
 		S.ExitUnless(
 			fmt.Sprintf(
 				"This will remove the registration for package %s.\nProceed",
-				pkg.Path))
+				Args.PkgPath))
 		err = env.UnRegister(Args.PkgPath)
+
+		if err != nil {
+			S.Error(err.Error())
+		}
+		os.Exit(0)
+
 	case "dump":
 		pkgs, err := env.Dump()
 

@@ -10,13 +10,14 @@ import (
 )
 
 type _args struct {
-	Verbose  bool
-	Json     bool
-	Yes      bool
-	NoWarn   bool
-	Override string
-	Panic    bool
-	PkgPath  string
+	Verbose   bool
+	Json      bool
+	Yes       bool
+	NoWarn    bool
+	Override  string
+	Panic     bool
+	PkgPath   string
+	SkipCheck bool
 }
 
 var (
@@ -40,6 +41,7 @@ func initV1() {
 	flag.BoolVar(&Args.Yes, "y", false, "answer all questions with 'yes'")
 	flag.BoolVar(&Args.NoWarn, "no-warn", false, "suppress warnings")
 	flag.BoolVar(&Args.Panic, "panic", false, "panic on errors")
+	flag.BoolVar(&Args.SkipCheck, "skip-check", false, "skip the dep check at the beginning of dep get")
 	flag.StringVar(&Args.Override, "override", "", "pass an overwrite file")
 }
 
@@ -91,6 +93,10 @@ func main() {
 
 	if cmd != "get" && Args.Override != "" {
 		S.Error("flag -override is only for dep get command")
+	}
+
+	if cmd != "get" && Args.SkipCheck {
+		S.Error("flag -skip-check is only for dep get command")
 	}
 
 	if !cmdsWithoutPkgDir[cmd] {

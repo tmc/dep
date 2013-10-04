@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 )
 
-func (o *Environment) Get(pkgPath string, overrides []*gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, err error) {
+func (o *Environment) Get(pkgPath string, overrides []*gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, changed map[string][2]string, err error) {
 	o.Open()
 	defer o.Close()
 
 	t := o.newTentative()
 	var er error
-	conflicts, er = t.updatePackage(pkgPath, overrides, confirmation)
+	conflicts, changed, er = t.updatePackage(pkgPath, overrides, confirmation)
 
 	if len(conflicts) > 0 {
 		er = fmt.Errorf("Error: there are %v conflicts", len(conflicts))

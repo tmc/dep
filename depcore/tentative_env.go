@@ -37,6 +37,15 @@ func (tent *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 		// package is updated
 		if err == nil {
 			// package is updated only, if the revision changed
+			/*
+				fmt.Printf(
+					"comparing %s (rev %s) with %s (rev %s)\n",
+					p.Dir,
+					tent.getRevision(p.Dir, "").Rev,
+					origDir,
+					tent.Original.getRevision(origDir, "").Rev,
+				)
+			*/
 			if tent.getRevision(p.Dir, "").Rev == tent.Original.getRevision(origDir, "").Rev {
 				skip[r] = true
 				continue
@@ -69,9 +78,10 @@ func relativePath(parentPath, childPath string) (rel string, err error) {
 	return
 }
 
-func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (err error) {
+func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (changed map[string][2]string, err error) {
 	o := tent.Original
 	visited := map[string]bool{}
+	changed = map[string][2]string{}
 
 	for _, pkg := range pkgs {
 		dir := pkg.Dir
@@ -94,7 +104,10 @@ func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (err error)
 		}
 
 		target := path.Join(o.GOPATH, "src", relRepoPath)
+		oldrevision := ""
 		if _, errExists := os.Stat(target); errExists == nil {
+			rev := o.getRevision(target, "")
+			oldrevision = rev.Rev
 			err = moveToBackup(target)
 			if err != nil {
 				return
@@ -108,38 +121,15 @@ func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (err error)
 		if err != nil {
 			return
 		}
+		rev := o.getRevision(target, "")
+		rel, errRel := relativePath(path.Join(tent.GOPATH, "src")+"/", r)
+		if errRel != nil {
+			panic("can't get relative path for " + r)
+		}
+		changed[rel] = [2]string{oldrevision, rev.Rev}
 	}
 	return
 }
-
-/*
-// todo make it work
-func hasConflict(pkg *gdf.Package, override *gdf.Package, ignoring map[string]bool) (errors map[string][3]string) {
-	errors = map[string][3]string{}
-
-	imp, err := dB.GetImported(pkg.Path)
-	if err != nil {
-		errors[pkg.Path] = [3]string{"error", err.Error(), ""}
-		return
-	}
-
-	for _, im := range imp {
-		if ignoring[im.Package] {
-			continue
-		}
-		key := fmt.Sprintf("%s:%s", im.Package, im.Name)
-		if val, exists := pkg.Exports[im.Name]; exists {
-			if val != im.Value {
-				errors[key] = [3]string{"changed", im.Value, val}
-			}
-			continue
-		}
-		//fmt.Printf("package %s \n\timports %s of %s, \n\tbut that has \n\t%s\n\n", im.Package, im.Name, pkg.Path, strings.Join(mapkeys(pkg.Exports), "\n\t"))
-		errors[key] = [3]string{"removed", im.Value, ""}
-	}
-	return
-}
-*/
 
 /*
    TODO
@@ -156,7 +146,8 @@ func hasConflict(pkg *gdf.Package, override *gdf.Package, ignoring map[string]bo
    tentative.Original.db
 */
 // return no errors for conflicts, only for severe errors
-func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, err error) {
+func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, changed map[string][2]string, err error) {
+	//fmt.Printf("updating package %s\n", pkg)
 	g := newPackageGetter(tentative.Environment, pkg)
 	err = g.get()
 	if err != nil {
@@ -169,7 +160,7 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 	}
 
 	if len(conflicts) > 0 {
-		err = fmt.Errorf("tentative GOPATH %s is not integer", tentative.GOPATH)
+		err = fmt.Errorf("tentative GOPATH %s is not consistent", tentative.GOPATH)
 		return
 	}
 
@@ -197,6 +188,11 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 	}
 
 	candidates := tentative.getCandidates()
+	if len(candidates) == 0 {
+		return
+	}
+
+	//fmt.Printf("candidates: %v\n", len(candidates))
 
 	// to ignore conflicts of dependencies between the
 	// packages that are all to be updated, ignore them
@@ -217,8 +213,9 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 	}
 	if len(conflicts) == 0 {
 		if confirmation(candidates...) {
-			err = tentative.movePackages(candidates...)
-			tentative.Original.db.registerPackages(false, candidates...)
+			changed, err = tentative.movePackages(candidates...)
+			// don't auto register
+			//			tentative.Original.db.registerPackages(false, candidates...)
 		}
 	}
 	return

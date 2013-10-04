@@ -1,33 +1,20 @@
 # Concept
 
-- in order to solve conflicts we should allow a flag -overwrite that takes a json
-file with the following content:
+- at the end of a successful update/get output info, which repos
+  (and packages) have been modified and from to what revisions.
+  output an info, that you should run go test in these packages
+  and that 'dep -complete check' will show all changes
 
+- make a flag -skip-check for 'dep get' to skip the initial
+  'dep check', otherwise make a 'dep check' at the beginning
 
-[
-    {
-        "Path": "github.com/metakeule/dep/depcore",
-        "Imports": {
-            "github.com/mattn/go-sqlite3#*SQLiteDriver.Open": "(*SQLiteDriver) Open(string)(driver.Conn,error)",
-            "github.com/metakeule/exports#*Environment.Build": "(*Environment) Build() *build.Context",
-            "github.com/metakeule/exports#*Environment.LoadJson": "(*Environment) LoadJson([]byte)(*Package,error)",
-            "github.com/metakeule/exports#*Environment.Pkg": "(*Environment) Pkg(string) *Package",
-            "github.com/metakeule/exports#*Environment.PkgDir": "(*Environment) PkgDir(string) string",
-            "github.com/metakeule/exports#*Environment.PkgExists": "(*Environment) PkgExists(string) bool",
-            "github.com/metakeule/exports#*Environment.PkgIsInternal": "(*Environment) PkgIsInternal(string) bool",
-        },
-        "Exports": {
-            "*Environment.Close": "(*Environment) Close()",
-            "*Environment.Diff": "(*Environment) Diff(*github.com/metakeule/exports#Package)(*pkgDiff,error)"
-        },
-        "InitMd5": "b54df8630bc72ee6a819fe60de3c2738"
-    }
-]
+- change the incompatible test case in a way that it will break
+  visibly (e.g. removal of an exported symbol)
 
-that will overwrite the registry information while comparing compatibility in a way that
-the compatibility information will be replaced by the one from the array
+- check, if method calls on structs are tracked in gdf
+- check, if embeded structs and method calls tracked in gdf
+- check, what happens to types defined on imported types
 
-- always ignore packages beginning with a special backup identifier that are backups from dep get
 
 - at the end of a successful update/get show the backup folders and ask, if they should be deleted
 

@@ -138,7 +138,7 @@ func (env *testEnv) Get(pkg, rev string) error {
 	return g.getPkgRev(r)
 }
 
-func (ev *testEnv) Update(pkg, rev string) error {
+func (ev *testEnv) Update(pkg, rev string) (changed map[string][2]string, err error) {
 	defer ev.inner.Close()
 	env := ev.inner
 
@@ -146,7 +146,7 @@ func (ev *testEnv) Update(pkg, rev string) error {
 
 	//err := g.getPkgRev(revision{VCM: "git", Rev: rev, RepoRoot: g.repoPath(pkg)})
 	//err := g.getImport(pkg, rev, map[string]bool{})
-	err := g.getByRev(pkg, rev, "git")
+	err = g.getByRev(pkg, rev, "git")
 
 	if err != nil {
 		panic(err.Error())
@@ -186,12 +186,13 @@ func (ev *testEnv) Update(pkg, rev string) error {
 		panic(fmt.Sprintf("GOPATH %s is not integer", env.GOPATH))
 	}
 
-	err = env.db.updatePackage(pkg, func(candidates ...*gdf.Package) bool {
+	changed, e := env.db.updatePackage(pkg, func(candidates ...*gdf.Package) bool {
 		return true
 	})
-	if err != nil {
+	if e != nil {
 		//		fmt.Printf("normal error in updating package\n")
-		return err
+		err = e
+		return
 	}
 
 	pdir, pinternal, perr := env.PkgDir(pkg)
@@ -204,7 +205,8 @@ func (ev *testEnv) Update(pkg, rev string) error {
 	}
 
 	if r := env.getRevisionGit(pdir); r != master {
-		return fmt.Errorf("revision after update %#v not matching master: %#v in package %#v\n", r, master, pkg)
+		err = fmt.Errorf("revision after update %#v not matching master: %#v in package %#v\n", r, master, pkg)
+		return
 	}
 	depsAfter, e := g.trackedRevisions(pkg)
 	if e != nil {
@@ -213,9 +215,10 @@ func (ev *testEnv) Update(pkg, rev string) error {
 
 	for d, drev := range depsAfter {
 		if r := env.getRevisionGit(path.Join(env.GOPATH, "src", d)); r != drev.Rev {
-			return fmt.Errorf("revision after update %#v not matching expected: %#v for dependancy package %#v\n", r, drev.Rev, d)
+			err = fmt.Errorf("revision after update %#v not matching expected: %#v for dependancy package %#v\n", r, drev.Rev, d)
+			return
 		}
 	}
 
-	return nil
+	return
 }
