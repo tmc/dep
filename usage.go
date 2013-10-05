@@ -110,7 +110,7 @@ The commands are:
                       informations in the registry and the checksums of the working
                       init functions.
 
- init-functions       show the content of the init functions of the package
+  init-functions      show the content of the init functions of the package
   
   check               checks the integrity of the whole GOPATH while respecting the
                       current registry.  
