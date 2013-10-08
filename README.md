@@ -144,7 +144,7 @@ the following workflow.
       json file, say 'override.json' as part of a json array. Now you can modify
       this file to match the exports that are requested by the packages that are
       part of the 'dep get' process. Make sure that the package also works with
-      the exports as defined in your file. Then you could try further runs of 'dep get' with passing the override.json file as parameter: 'dep -override=override.json get packagepat'. This will take the gdfs given in the file overriding their definition in the registry. If everything runs fine, the new packages will
+      the exports as defined in your file. Then you could try further runs of 'dep get' with passing the override.json file as parameter: 'dep -override=override.json get packagepath'. This will take the gdfs given in the file overriding their definition in the registry. If everything runs fine, the new packages will
       be moved to your GOPATH and then you should make sure that everything works as expected. After that you can run 'go install' and 'dep backups-cleanup'.
 
 - Fixing errors reported by 'dep check':
