@@ -1,0 +1,30 @@
+{
+  "github.com/go-dep/gdf": {
+    "VCM": "git",
+    "Rev": "f9a927a7907ff4c3cd9e9ecf9a37081aa5cb0566",
+    "Parent": "github.com/go-dep/dep/depcore",
+    "Tag": "",
+    "RepoRoot": "github.com/go-dep/gdf"
+  },
+  "github.com/mattn/go-sqlite3": {
+    "VCM": "git",
+    "Rev": "73ea0ad09f1ffc09c0a4f9a41923d676c60f1624",
+    "Parent": "github.com/go-dep/dep/depcore",
+    "Tag": "",
+    "RepoRoot": "github.com/mattn/go-sqlite3"
+  },
+  "github.com/metakeule/dbwrap": {
+    "VCM": "git",
+    "Rev": "bee8f68fd9721792f858dd758df4911016e2502d",
+    "Parent": "github.com/go-dep/dep/depcore",
+    "Tag": "",
+    "RepoRoot": "github.com/metakeule/dbwrap"
+  },
+  "github.com/metakeule/fmtdate": {
+    "VCM": "git",
+    "Rev": "3a581709385e389a529a7dec33dc7940b59eafc0",
+    "Parent": "github.com/go-dep/dep/depcore",
+    "Tag": "",
+    "RepoRoot": "github.com/metakeule/fmtdate"
+  }
+}
