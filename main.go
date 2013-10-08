@@ -100,7 +100,6 @@ func main() {
 	}
 
 	if !cmdsWithoutPkgDir[cmd] {
-		//if cmd != "init" && cmd != "check" {
 		if len(args) == 2 {
 			Args.PkgPath = args[1]
 		} else {
@@ -108,7 +107,6 @@ func main() {
 		}
 
 		if !cmdsWithoutExistingPkg[cmd] {
-			//if cmd != "unregister" && cmd != "get" {
 			S.Package(Args.PkgPath)
 		}
 
