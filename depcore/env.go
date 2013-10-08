@@ -72,7 +72,6 @@ func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pk
 			if err != nil {
 				panic(fmt.Sprintf("package %s does not exist", im))
 			}
-			//d, _ := p.Dir()
 			var d string
 			var internal bool
 			d, internal, err = o.PkgDir(im)
@@ -237,8 +236,6 @@ func (o *Environment) getRevCmd(dir string, c string, args ...string) string {
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
 
-	//fmt.Printf("running: %s %s\n\tin %s\n\twith GOPATH: %s\n", c, strings.Join(args, " "), dir, o.GOPATH)
-
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -382,15 +379,6 @@ func (env *Environment) Init() (conflicts map[string]map[string][3]string) {
 	env.cleandb()
 	env.mkdb()
 	ps := env.allPackages()
-	// fmt.Printf("init called for %s\n", env.GOPATH)
-	/*
-		for _, p := range ps {
-			if p.Path == "github.com/go-dep/deptest_mod/incompatible" {
-				fmt.Printf("registering %s with Struct %#v \n", p.Path, p.Exports["Struct"])
-			}
-		}
-	*/
-
 	env.db.registerPackages(true, ps...)
 	return env.checkIntegrity(ps...)
 }
@@ -404,10 +392,7 @@ func (env *Environment) CheckIntegrity() (conflicts map[string]map[string][3]str
 // checks the integrity of all packages
 // by adding them to the db and checking for conflicts
 func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string]map[string][3]string) {
-	//fmt.Println("check integrity")
-	//env.mkdb()
 	conflicts = map[string]map[string][3]string{}
-	///*
 	conflicts["#dep-registry-orphan#"] = map[string][3]string{}
 	conflicts["#dep-registry-inconsistency#"] = map[string][3]string{}
 
@@ -419,11 +404,8 @@ func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string
 			delete(conflicts, "#dep-registry-inconsistency#")
 		}
 	}()
-	//*/
 	pkgs := map[string]bool{}
 
-	//ps := env.allPackages()
-	//env.db.registerPackages(ps...)
 	for _, p := range ps {
 		pkgs[p.Path] = true
 		d, er := env.Diff(p, false)
@@ -455,11 +437,6 @@ func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string
 		}
 	}
 
-	/*
-		if len(conflicts) > 0 {
-			return
-		}
-	*/
 	dbpkgs, err := env.db.GetAllPackages()
 	if err != nil {
 		panic(err.Error())
@@ -561,4 +538,165 @@ func (env *Environment) Dump() (all []*gdf.Package, err error) {
 		all[i] = &pkg
 	}
 	return
+}
+
+func (env *Environment) Register(includeImported bool, pkg *gdf.Package) error {
+	env.mkdb()
+	env.db.registerPackages(includeImported, pkg)
+	return nil
+}
+
+func (env *Environment) UnRegister(pkgPath string) error {
+	env.mkdb()
+	return env.db.DeletePackage(pkgPath)
+}
+
+func (o *Environment) Track(pkg *gdf.Package, recursive bool) (data []byte, err error) {
+	revisions := map[string]revision{}
+	for im, _ := range pkg.ImportedPackages {
+		//o.trackedImportRevisions(pkg.Path)
+		iPkg, e := o.Pkg(im)
+
+		if e != nil {
+			err = e
+			return
+		}
+		if iPkg.Internal {
+			continue
+		}
+		revisions[im] = o.getRevision(iPkg.Dir, pkg.Path)
+		if recursive {
+			o.recursiveImportRevisions(revisions, iPkg, pkg.Path)
+			continue
+		}
+	}
+
+	data, err = json.MarshalIndent(revisions, "", "  ")
+	if err != nil {
+		return
+	}
+
+	filename := path.Join(pkg.Dir, revFileName)
+	err = ioutil.WriteFile(filename, data, 0644)
+	return
+}
+
+func lintInit(pkg *gdf.Package) error {
+	if pkg.InitMd5 == "" {
+		return nil
+	}
+	if len(pkg.RawInits) > 1 {
+		fs := []string{}
+		for k, _ := range pkg.RawInits {
+			fs = append(fs, k)
+		}
+		return fmt.Errorf("package has more than one init function:\n%s", strings.Join(fs, "\n"))
+	}
+
+	for k, v := range pkg.RawInits {
+		if strings.Index(v, ";") != -1 {
+			return fmt.Errorf("init function in %s has more than one statement", k)
+		}
+	}
+	return nil
+}
+
+func (env *Environment) Lint(pkg *gdf.Package) error {
+	return lintInit(pkg)
+}
+
+func (o *Environment) Get(pkgPath string, overrides []*gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, changed map[string][2]string, err error) {
+	o.Open()
+	defer o.Close()
+
+	t := o.newTentative()
+	var er error
+	conflicts, changed, er = t.updatePackage(pkgPath, overrides, confirmation)
+
+	if len(conflicts) > 0 {
+		er = fmt.Errorf("Error: there are %v conflicts", len(conflicts))
+	}
+
+	if er != nil {
+		dir := filepath.Dir(t.GOPATH)
+		new_path := filepath.Join(dir, fmt.Sprintf(TempGOPATHPreFix+"%v", now()))
+		os.Rename(t.GOPATH, new_path)
+		err = fmt.Errorf(er.Error()+"\ncheck or remove the temporary gopath at %s\n", new_path)
+	}
+	return
+}
+
+type pkgDiff struct {
+	Path    string
+	Exports []string
+	Imports []string
+}
+
+func mapDiff(_old map[string]string, _new map[string]string, includeVals bool) (diff []string) {
+	diff = []string{}
+	var visited = map[string]bool{}
+
+	for k, v := range _old {
+		visited[k] = true
+		vNew, inNew := _new[k]
+		if !inNew {
+			if includeVals {
+				diff = append(diff, "---"+k+": "+v)
+			} else {
+				diff = append(diff, "---"+k)
+			}
+			continue
+		}
+		if includeVals {
+			if v != vNew {
+				diff = append(diff, "---"+k+": "+v)
+				diff = append(diff, "+++"+k+": "+vNew)
+			}
+		}
+	}
+
+	for k, v := range _new {
+		if !visited[k] {
+			if includeVals {
+				diff = append(diff, "+++"+k+": "+v)
+			} else {
+				diff = append(diff, "+++"+k)
+			}
+		}
+	}
+	return
+}
+
+func (o *Environment) Diff(pkg *gdf.Package, includeImportTypeDiffs bool) (diff *pkgDiff, err error) {
+	dbpkg, exps, imps, e := o.db.GetPackage(pkg.Path, true, true)
+	if e != nil {
+		err = fmt.Errorf("package not registered: %s\n", pkg.Path)
+		return
+	}
+
+	if pkg.JsonMd5() != dbpkg.JsonMd5 {
+		pkgjs := pkg
+
+		var oldExports = map[string]string{}
+
+		for _, dbExp := range exps {
+			oldExports[dbExp.Name] = dbExp.Value
+		}
+
+		pDiff := &pkgDiff{}
+		pDiff.Path = pkg.Path
+		pDiff.Exports = mapDiff(oldExports, pkgjs.Exports, true)
+
+		var oldImports = map[string]string{}
+
+		for _, dbImp := range imps {
+			oldImports[dbImp.Import+"#"+dbImp.Name] = dbImp.Value
+		}
+		pDiff.Imports = mapDiff(oldImports, pkgjs.Imports, includeImportTypeDiffs)
+
+		if len(pDiff.Exports) > 0 || len(pDiff.Imports) > 0 {
+			return pDiff, nil
+		}
+	}
+	return nil, nil
 }

@@ -37,15 +37,6 @@ func (tent *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 		// package is updated
 		if err == nil {
 			// package is updated only, if the revision changed
-			/*
-				fmt.Printf(
-					"comparing %s (rev %s) with %s (rev %s)\n",
-					p.Dir,
-					tent.getRevision(p.Dir, "").Rev,
-					origDir,
-					tent.Original.getRevision(origDir, "").Rev,
-				)
-			*/
 			if tent.getRevision(p.Dir, "").Rev == tent.Original.getRevision(origDir, "").Rev {
 				skip[r] = true
 				continue
@@ -131,23 +122,7 @@ func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (changed ma
 	return
 }
 
-/*
-   TODO
-
-    (checkout / update is only for one package at a time)
-   1. go get package into tempdir
-   2. (for all packages in tempdir/package/dep-rev.json): checkout revisions into tempdir (each repo only once)
-   3. check integrity for all packages in tempdir, run to test on each
-   4. get candidates for movement to GOPATH: all repos in tempdir, that either aren't in GOPATH or have different revisions
-   5. (for all candidates) check if updates packages won't break packages in GOPATH, if so return errors
-   6. move candicate repos to path and go install them, update the registry
-*/
-/*
-   tentative.Original.db
-*/
-// return no errors for conflicts, only for severe errors
 func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gdf.Package, confirmation func(candidates ...*gdf.Package) bool) (conflicts map[string]map[string][3]string, changed map[string][2]string, err error) {
-	//fmt.Printf("updating package %s\n", pkg)
 	g := newPackageGetter(tentative.Environment, pkg)
 	err = g.get()
 	if err != nil {
@@ -178,11 +153,11 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 			dB.Close()
 		}()
 
-		//if VERBOSE {
-		for _, override := range overrides {
-			fmt.Printf("overriding %s\n", override.Path)
+		if VERBOSE {
+			for _, override := range overrides {
+				fmt.Printf("overriding %s\n", override.Path)
+			}
 		}
-		//}
 
 		dB.registerPackages(false, overrides...)
 	}
@@ -191,8 +166,6 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 	if len(candidates) == 0 {
 		return
 	}
-
-	//fmt.Printf("candidates: %v\n", len(candidates))
 
 	// to ignore conflicts of dependencies between the
 	// packages that are all to be updated, ignore them
@@ -214,8 +187,6 @@ func (tentative *tentativeEnvironment) updatePackage(pkg string, overrides []*gd
 	if len(conflicts) == 0 {
 		if confirmation(candidates...) {
 			changed, err = tentative.movePackages(candidates...)
-			// don't auto register
-			//			tentative.Original.db.registerPackages(false, candidates...)
 		}
 	}
 	return

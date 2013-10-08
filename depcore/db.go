@@ -2,12 +2,10 @@ package depcore
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
-
-	// "github.com/go-dep/dep/db"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"github.com/go-dep/gdf"
 	sqlite "github.com/mattn/go-sqlite3"
 	"github.com/metakeule/dbwrap"
@@ -62,7 +60,6 @@ func (ø *db) CleanupTables() {
 		_, err = ø.Exec(sql)
 		if err != nil {
 			panic(fmt.Sprintf("%q: %s\n", err, sql))
-			//log.Printf("%q: %s\n", err, sql)
 			return
 		}
 	}
@@ -78,7 +75,6 @@ func (ø *db) NumPackages() (n int) {
 }
 
 func (ø *db) CreateTables() {
-	// fmt.Printf("CREATE TABLES FOR %s\n", db.File)
 	var err error
 	sqls := []string{
 		`
@@ -112,7 +108,6 @@ func (ø *db) CreateTables() {
 		_, err = ø.Exec(sql)
 		if err != nil {
 			panic(fmt.Sprintf("%q: %s\n", err, sql))
-			//log.Printf("%q: %s\n", err, sql)
 			return
 		}
 	}
@@ -130,7 +125,6 @@ func initDB() {
 						fmt.Println(data...)
 					}
 		*/
-		//fmt.Println(data...)
 	}
 
 	dBWrapper.AfterAll = func(conn driver.Conn, event string, data ...interface{}) {
@@ -147,17 +141,6 @@ func mapkeys(m map[string]string) []string {
 	return res
 }
 
-/*
-   TODO
-   - check for all packages within the repoDir
-   - check for package and all their dependancies, if
-       - their dependant packages would be fine with the new exports
-   - if all is fine, move the missing src entries to the real GOPATH and install the package
-   - if there are some conflicts, show them
-*/
-
-// TODO: add verbose flag for verbose output
-// ignore the given dependencies
 func (dB *db) hasConflict(pkg *gdf.Package, ignoring map[string]bool) (errors map[string][3]string) {
 	errors = map[string][3]string{}
 	/*
@@ -182,7 +165,6 @@ func (dB *db) hasConflict(pkg *gdf.Package, ignoring map[string]bool) (errors ma
 			}
 			continue
 		}
-		//fmt.Printf("package %s \n\timports %s of %s, \n\tbut that has \n\t%s\n\n", im.Package, im.Name, pkg.Path, strings.Join(mapkeys(pkg.Exports), "\n\t"))
 		errors[key] = [3]string{"removed", im.Value, ""}
 	}
 	return
@@ -289,5 +271,358 @@ func (dB *db) removeOrphanedPackages() (candidates map[string]bool, err error) {
 			return
 		}
 	}
+	return
+}
+
+func _deleteExports(pkgPath string, tx *sql.Tx) (err error) {
+	_, err = tx.Exec(`delete from exports where package = ?`, pkgPath)
+	return
+}
+
+func _deleteImports(pkgPath string, tx *sql.Tx) (err error) {
+	_, err = tx.Exec(`delete from imports where package = ?`, pkgPath)
+	return
+}
+
+func _deletePackage(pkgPath string, tx *sql.Tx) (err error) {
+	_, err = tx.Exec(`delete from packages where package = ?`, pkgPath)
+	return
+}
+
+func (ø *db) DeletePackage(pkgPath string) (err error) {
+	var tx *sql.Tx
+	defer func() {
+		if err != nil && tx != nil {
+			tx.Rollback()
+		}
+	}()
+	tx, err = ø.Begin()
+	if err != nil {
+		return
+	}
+	err = _deleteExports(pkgPath, tx)
+	if err != nil {
+		return
+	}
+	err = _deleteImports(pkgPath, tx)
+	if err != nil {
+		return
+	}
+
+	err = _deletePackage(pkgPath, tx)
+	if err != nil {
+		return
+	}
+	tx.Commit()
+	fmt.Printf("deleted: %s\n", pkgPath)
+	return
+}
+
+// the the exports of the given package that were imported
+// by other packages
+func (ø *db) GetImported(importedPkg string) (imps []*imp, err error) {
+	var rows *sql.Rows
+	imps = []*imp{}
+	rows, err = ø.Query("select package, import, name, value from imports where import = ?", importedPkg)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		i := &imp{}
+		err = rows.Scan(&i.Package, &i.Import, &i.Name, &i.Value)
+		if err != nil {
+			return
+		}
+		imps = append(imps, i)
+	}
+	return
+}
+
+func (ø *db) GetPackage(packagePath string, withExports bool, withImports bool) (p *dbPkg, exps []*exp, imps []*imp, err error) {
+	var row *sql.Row
+	p = &dbPkg{}
+	row = ø.QueryRow("select package,  initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
+	err = row.Scan(&p.Package, &p.InitMd5, &p.JsonMd5, &p.Json)
+	if err != nil {
+		return
+	}
+	if withExports {
+		var rows *sql.Rows
+		exps = []*exp{}
+		rows, err = ø.Query("select package, name, value from exports where package = ?", packagePath)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			e := &exp{}
+			err = rows.Scan(&e.Package, &e.Name, &e.Value)
+			if err != nil {
+				return
+			}
+			exps = append(exps, e)
+		}
+	}
+
+	if withImports {
+		var rows *sql.Rows
+		imps = []*imp{}
+		rows, err = ø.Query("select package, import, name, value from imports where package = ?", packagePath)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			i := &imp{}
+			err = rows.Scan(&i.Package, &i.Import, &i.Name, &i.Value)
+			if err != nil {
+				return
+			}
+			imps = append(imps, i)
+		}
+	}
+	return
+}
+
+func (ø *db) GetAllPackages() (ps []*dbPkg, err error) {
+	var rows *sql.Rows
+	ps = []*dbPkg{}
+	rows, err = ø.Query("select package, initmd5, jsonmd5, json from packages order by package asc")
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		p := &dbPkg{}
+		err = rows.Scan(&p.Package, &p.InitMd5, &p.JsonMd5, &p.Json)
+		if err != nil {
+			return
+		}
+		ps = append(ps, p)
+	}
+	return
+}
+
+func (ø *db) GetAllImports() (is []*imp, err error) {
+	var rows *sql.Rows
+	is = []*imp{}
+	rows, err = ø.Query("select package, import, name, value from imports")
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		i := &imp{}
+		err = rows.Scan(&i.Package, &i.Import, &i.Name, &i.Value)
+		if err != nil {
+			return
+		}
+		is = append(is, i)
+	}
+	return
+}
+
+func (ø *db) GetAllExports() (es []*exp, err error) {
+	var rows *sql.Rows
+	es = []*exp{}
+	rows, err = ø.Query("select package, name, value from exports")
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		e := &exp{}
+		err = rows.Scan(&e.Package, &e.Name, &e.Value)
+		if err != nil {
+			return
+		}
+		es = append(es, e)
+	}
+	return
+}
+
+func (ø *db) InsertPackages(p []*dbPkg, e []*exp, im []*imp) (err error) {
+	var tx *sql.Tx
+	defer func() {
+		if err != nil && tx != nil {
+			tx.Rollback()
+		}
+	}()
+	tx, err = ø.Begin()
+	if err != nil {
+		return
+	}
+	stmt, err := tx.Prepare("insert or replace into packages(package, initmd5, json, jsonmd5) values(?, ?, ?, ?)")
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+	for i := 0; i < len(p); i++ {
+		_, err = stmt.Exec(p[i].Package, p[i].InitMd5, p[i].Json, p[i].JsonMd5)
+		if err != nil {
+			return
+		}
+		err = _deleteImports(p[i].Package, tx)
+		if err != nil {
+			return
+		}
+		err = _deleteExports(p[i].Package, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	err = _insertExports(tx, e...)
+	if err != nil {
+		return
+	}
+	err = _insertImports(tx, im...)
+	if err != nil {
+		return
+	}
+
+	tx.Commit()
+	return
+}
+
+func _insertExports(tx *sql.Tx, e ...*exp) (err error) {
+	var stmt *sql.Stmt
+	stmt, err = tx.Prepare("insert or replace into exports(package, name, value) values(?, ?, ?)")
+	if err != nil {
+		fmt.Println("Error in Exports ", err.Error())
+		return
+	}
+	defer stmt.Close()
+	for i := 0; i < len(e); i++ {
+		_, err = stmt.Exec(e[i].Package, e[i].Name, e[i].Value)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (ø *db) InsertExports(e ...*exp) (err error) {
+	var tx *sql.Tx
+	defer func() {
+		if err != nil && tx != nil {
+			tx.Rollback()
+		}
+	}()
+	tx, err = ø.Begin()
+	if err != nil {
+		return
+	}
+	err = _insertExports(tx, e...)
+	if err != nil {
+		return
+	}
+	tx.Commit()
+	return
+}
+
+func _insertImports(tx *sql.Tx, im ...*imp) (err error) {
+	var stmt *sql.Stmt
+	stmt, err = tx.Prepare("insert or replace into imports(package, import, name, value) values(?, ?, ?, ?)")
+	if err != nil {
+		return
+	}
+	defer stmt.Close()
+	for i := 0; i < len(im); i++ {
+		_, err = stmt.Exec(im[i].Package, im[i].Import, im[i].Name, im[i].Value)
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (ø *db) InsertImports(im ...*imp) (err error) {
+	var tx *sql.Tx
+	defer func() {
+		if err != nil && tx != nil {
+			tx.Rollback()
+		}
+	}()
+	tx, err = ø.Begin()
+	if err != nil {
+		return
+	}
+	err = _insertImports(tx, im...)
+	if err != nil {
+		return
+	}
+	tx.Commit()
+	return
+}
+
+type dbPkg struct {
+	Package string
+	JsonMd5 string
+	Json    []byte
+	InitMd5 string
+}
+
+type exp struct {
+	Package string
+	Name    string
+	Value   string
+}
+
+type imp struct {
+	Package string
+	Import  string
+	Name    string
+	Value   string
+}
+
+func (ø *db) UpdatePackage(p *dbPkg, i []*imp, e []*exp) (err error) {
+	var tx *sql.Tx
+	defer func() {
+		if err != nil && tx != nil {
+			tx.Rollback()
+		}
+	}()
+	tx, err = ø.Begin()
+	if err != nil {
+		return
+	}
+
+	_, err = tx.Exec(`
+        update 
+            packages
+        set 
+            initmd5 = ?, 
+            json = ?, 
+            jsonmd5 = ?
+        where
+            package = ?
+        `,
+		p.InitMd5, p.Json, p.JsonMd5, p.Package)
+	if err != nil {
+		return
+	}
+
+	err = _deleteExports(p.Package, tx)
+	if err != nil {
+		return
+	}
+
+	err = _deleteImports(p.Package, tx)
+	if err != nil {
+		return
+	}
+
+	err = _insertImports(tx, i...)
+	if err != nil {
+		return
+	}
+	err = _insertExports(tx, e...)
+	if err != nil {
+		return
+	}
+
+	tx.Commit()
 	return
 }

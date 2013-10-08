@@ -2,16 +2,61 @@ package depcore
 
 import (
 	"bytes"
-	"fmt"
-	// "github.com/go-dep/dep/db"
 	"encoding/json"
+	"fmt"
 	"github.com/go-dep/gdf"
+	"go/build"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+type subPackages struct {
+	packages map[string]bool
+	env      environmental
+}
+
+type environmental interface {
+	shouldIgnorePkg(string) bool
+	Build() *build.Context
+	PkgPath(string) string
+}
+
+func newSubPackages(env environmental) *subPackages {
+	return &subPackages{
+		packages: map[string]bool{},
+		env:      env,
+	}
+}
+
+func (ø *subPackages) Walker(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		pPath := ø.env.PkgPath(path)
+		if ø.env.shouldIgnorePkg(pPath) {
+			return filepath.SkipDir
+		}
+		pkg, err := ø.env.Build().ImportDir(path, build.ImportMode(0))
+		if err == nil && pkg != nil {
+			ø.packages[pkg.ImportPath] = true
+		}
+	}
+	return nil
+}
+
+func niceJson(pkgs ...*gdf.Package) (b []byte) {
+	var err error
+	b, err = json.MarshalIndent(pkgs, "", "   ")
+	if err != nil {
+		panic(err.Error())
+	}
+	return
+}
 
 func toJson(i interface{}) []byte {
 	b, err := json.MarshalIndent(i, "", "  ")
@@ -143,11 +188,7 @@ func (ev *testEnv) Update(pkg, rev string) (changed map[string][2]string, err er
 	env := ev.inner
 
 	g := newPackageGetter(env, pkg)
-
-	//err := g.getPkgRev(revision{VCM: "git", Rev: rev, RepoRoot: g.repoPath(pkg)})
-	//err := g.getImport(pkg, rev, map[string]bool{})
 	err = g.getByRev(pkg, rev, "git")
-
 	if err != nil {
 		panic(err.Error())
 	}
@@ -190,7 +231,6 @@ func (ev *testEnv) Update(pkg, rev string) (changed map[string][2]string, err er
 		return true
 	})
 	if e != nil {
-		//		fmt.Printf("normal error in updating package\n")
 		err = e
 		return
 	}
