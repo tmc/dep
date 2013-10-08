@@ -49,78 +49,84 @@ Options:
 
 The commands are:
 
-  gdf                 Print the package's GDF as it is currently (ignoring the registry)
+  gdf                 Print the GDF of the package based on the local source dir
 
   get                 first does a 'dep check' for the GOPATH and then 
                       go get -u the given package and its dependancies
-                      without breaking installed packages. Returns a list
-                      of incompatibilities if there were any.
-                      If there are dep-rev.json files within the package or any of their imports,
-                      the revisions will be respected. That might lead to a "downgrade" of some
-                      packages. However at the end of a successful 'dep get' you will be shown a
-                      list of repositories that changed. And there is chown from which revision to
-                      which the repository changed. So you might decide on your own, if that is what
-                      you wanted.
+                      without breaking installed packages. 
+                      Returns a list of incompatibilities if there were any.
+                      If there are dep-rev.json files within the package or 
+                      any of their imports, the revisions will be respected. 
+                      That might lead to a "downgrade" of some packages. 
+                      However at the end of a successful 'dep get' you will be 
+                      shown a list of repositories that changed and from which 
+                      revision to what. 
+                      So you might decide on your own, if you want to keep the
+                      changes.
                       If a file is passed with -override, it is considered a 
                       Json-Array of GDFs that replace the corresponding entries 
                       in the registry when doing error checking.
-                      You might get them from a package with 'dep gdf'.
+                      You can get a GDF of a package with 'dep gdf'.
                       Don't forget to register the changed packages 
                       after a successful update with dep get.
-                      You will get a list of them with 'dep check'.
+                      You will get a list of all differences between the GDF 
+                      based on the source directory and the counterpart in the
+                      registry by using 'dep check'.
                       'dep get' does not 'go install' the packages. So you might
                       want to do this after running 'dep get'.
-                      Please be aware that even if no GDF compatibility has been broken,
-                      the updated/installed packages themselves may not work (may be disfunctional).
-                      So check if they work correctly (e.g. by running 'go test ./...').
-                      For every changed package repository you get a backup directory in the same
-                      folder. So you might simply rename them in case anything goes wrong.
-                      If everything is fine, don't forget to register the changes in the 
-                      registry with 'dep register' or 'dep register-included'.
+                      Please be aware that even if no GDF compatibility has been 
+                      broken, the updated/installed packages may be 
+                      disfunctional.
+                      So check if they work correctly (e.g. by running 
+                      'go test ./...').
+                      For every changed package repository you get a backup 
+                      directory in the same folder. So you might simply rename 
+                      them in case anything goes wrong.
+                      Again, if everything is fine, don't forget to register the 
+                      changes in the registry with 'dep register' or 
+                      'dep register-included'.
   
   track               track the imported packages with their revisions in 
                       the dep-rev.json file inside the package directory
                       That file will be used to get the exact same revisions
                       when using dep get.
   
-  register            Add / update package's GDF inside the registry. 
-                      Only needed for packages in the GOPATH that had already
-                      been installed with other tools (e.g. go get / go install).
-                      Not needed for packages that were installed via dep get.
-
-  imports             show the imported packages of the current package 
-                      (ignoring the information from the registry)
+  register            Add / update package's GDF inside the registry.
+                      
+  imports             show the imported packages of the local package source dir 
   
-  register-included   like register, but also registers any included packages, as
-                      they were currently in GOPATH/src
+  register-included   like register, but also registers any included packages, 
+                      as they were currently in GOPATH/src
   
   unregister          removes a package from the registry
   
-  diff                Show the difference in the GDFs between the given package 
-                      and its GDF as it is in the registry.
+  diff                Show the difference in the GDFs between the local source
+                      dir and its counterpart in the registry.
   
   lint                Check if the given package respects the recommendations
                       for a package maintainer as given by the GDF.
                       Please keep in mind that not all recommendations can be
-                      automatically checked.
+                      automatically checked. This is highly WIP.
   
   init                (Re)initialize the registry for the whole GOPATH and
-                      check for incompatibilities in exports between the packages 
-                      in GOPATH/src. WARNING: this erases the former compatibility
-                      informations in the registry and the checksums of the working
-                      init functions.
+                      check for incompatibilities in exports between the 
+                      packages in GOPATH/src. 
+                      WARNING: this erases the former compatibility
+                      informations in the registry and the checksums of the 
+                      init functions that used to be compatible.
 
-  init-functions      show the content of the init functions of the package
+  init-functions      show the content of the init functions of the package, 
+                      based on the local source dir
   
-  check               checks the integrity of the whole GOPATH while respecting the
-                      current registry.  
+  check               checks the integrity of the whole GOPATH while based on
+                      its registry.  
 
-  registry-cleanup    removes orphaned packages in the registry that do not exist in
-                      the GOPATH anymore  
+  registry-cleanup    removes orphaned packages in the registry that do not 
+                      exist in GOPATH/src any longer  
 
   gopath-cleanup      removes orphaned temporary GOPATHs for tentative dep gets  
 
   backups-cleanup     removes all backups of dep get in the current GOPATH
 
-  dump                dump the GDFs as they are in the registry, sorted by package name
+  dump                dump the GDFs from the registry, sorted by package name
 `
