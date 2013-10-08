@@ -271,6 +271,17 @@ Proceed`,
 		for _, m := range matches {
 			os.RemoveAll(m)
 		}
+	case "registry-cleanup":
+		candidates, err := env.RemoveOrphanedPackages()
+		for candidate, _ := range candidates {
+			fmt.Printf("removed: %s from registy\n", candidate)
+		}
+
+		if err != nil {
+			S.Error(err.Error())
+		}
+		os.Exit(0)
+
 	default:
 		fmt.Println(usage)
 	}

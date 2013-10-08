@@ -53,6 +53,11 @@ var BackupPostFix = "_backup_of_dep_update"
 var backupRegExp = regexp.MustCompile(BackupPostFix + "$")
 
 func (env *Environment) shouldIgnorePkg(pkg string) bool {
+	if strings.HasPrefix(path.Base(pkg), ".") {
+		// fmt.Printf("%s\n", path.Base(pkg))
+		return true
+	}
+
 	if exampleRegExp.MatchString(pkg) || backupRegExp.MatchString(pkg) {
 		return true
 	}
@@ -315,12 +320,14 @@ func (env *Environment) allPackages() (a []*gdf.Package) {
 		panic(err.Error())
 	}
 	for p, _ := range prs.packages {
+		fmt.Print(".")
 		pk, e := env.Pkg(p)
 		if e != nil {
 			continue
 		}
 		a = append(a, pk)
 	}
+	fmt.Print("\n")
 	return
 }
 
@@ -699,4 +706,8 @@ func (o *Environment) Diff(pkg *gdf.Package, includeImportTypeDiffs bool) (diff 
 		}
 	}
 	return nil, nil
+}
+
+func (o *Environment) RemoveOrphanedPackages() (candidates map[string]bool, err error) {
+	return o.db.removeOrphanedPackages()
 }
