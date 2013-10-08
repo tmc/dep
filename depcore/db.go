@@ -80,7 +80,6 @@ func (ø *db) CreateTables() {
 		`
         create table packages (
             package         text not null primary key,
-            initmd5         text not null,
             jsonmd5         text not null,
             json            blob not null
         )`,
@@ -342,8 +341,8 @@ func (ø *db) GetImported(importedPkg string) (imps []*imp, err error) {
 func (ø *db) GetPackage(packagePath string, withExports bool, withImports bool) (p *dbPkg, exps []*exp, imps []*imp, err error) {
 	var row *sql.Row
 	p = &dbPkg{}
-	row = ø.QueryRow("select package,  initmd5, jsonmd5, json from packages where package = ? limit 1", packagePath)
-	err = row.Scan(&p.Package, &p.InitMd5, &p.JsonMd5, &p.Json)
+	row = ø.QueryRow("select package,  jsonmd5, json from packages where package = ? limit 1", packagePath)
+	err = row.Scan(&p.Package, &p.JsonMd5, &p.Json)
 	if err != nil {
 		return
 	}
@@ -388,14 +387,14 @@ func (ø *db) GetPackage(packagePath string, withExports bool, withImports bool)
 func (ø *db) GetAllPackages() (ps []*dbPkg, err error) {
 	var rows *sql.Rows
 	ps = []*dbPkg{}
-	rows, err = ø.Query("select package, initmd5, jsonmd5, json from packages order by package asc")
+	rows, err = ø.Query("select package, jsonmd5, json from packages order by package asc")
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		p := &dbPkg{}
-		err = rows.Scan(&p.Package, &p.InitMd5, &p.JsonMd5, &p.Json)
+		err = rows.Scan(&p.Package, &p.JsonMd5, &p.Json)
 		if err != nil {
 			return
 		}
@@ -453,13 +452,13 @@ func (ø *db) InsertPackages(p []*dbPkg, e []*exp, im []*imp) (err error) {
 	if err != nil {
 		return
 	}
-	stmt, err := tx.Prepare("insert or replace into packages(package, initmd5, json, jsonmd5) values(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("insert or replace into packages(package, json, jsonmd5) values(?, ?, ?)")
 	if err != nil {
 		return
 	}
 	defer stmt.Close()
 	for i := 0; i < len(p); i++ {
-		_, err = stmt.Exec(p[i].Package, p[i].InitMd5, p[i].Json, p[i].JsonMd5)
+		_, err = stmt.Exec(p[i].Package, p[i].Json, p[i].JsonMd5)
 		if err != nil {
 			return
 		}
@@ -561,7 +560,6 @@ type dbPkg struct {
 	Package string
 	JsonMd5 string
 	Json    []byte
-	InitMd5 string
 }
 
 type exp struct {
@@ -593,13 +591,12 @@ func (ø *db) UpdatePackage(p *dbPkg, i []*imp, e []*exp) (err error) {
         update 
             packages
         set 
-            initmd5 = ?, 
             json = ?, 
             jsonmd5 = ?
         where
             package = ?
         `,
-		p.InitMd5, p.Json, p.JsonMd5, p.Package)
+		p.Json, p.JsonMd5, p.Package)
 	if err != nil {
 		return
 	}

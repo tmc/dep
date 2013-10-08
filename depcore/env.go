@@ -141,7 +141,6 @@ func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *gdf.Pac
 	p := &dbPkg{}
 	p.Package = pkg.Path
 	p.Json = niceJson(pkg)
-	p.InitMd5 = pkg.InitMd5
 	p.JsonMd5 = pkg.JsonMd5()
 	pkgMap[pkg.Path] = p
 	dbExps = []*exp{}
@@ -530,7 +529,6 @@ func (env *Environment) Dump() (all []*gdf.Package, err error) {
 	for i, p := range allP {
 		pkg := gdf.Package{}
 		pkg.Path = p.Package
-		pkg.InitMd5 = p.InitMd5
 		pkgImp, hasImp := pkgImports[p.Package]
 		if !hasImp {
 			pkgImp = map[string]string{}
@@ -589,7 +587,7 @@ func (o *Environment) Track(pkg *gdf.Package, recursive bool) (data []byte, err 
 }
 
 func lintInit(pkg *gdf.Package) error {
-	if pkg.InitMd5 == "" {
+	if pkg.RawExports["init"].String() == "" {
 		return nil
 	}
 	if len(pkg.RawInits) > 1 {
