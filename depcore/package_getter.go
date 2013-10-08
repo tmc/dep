@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/gdf"
 	"io/ioutil"
 	"os"
 	"os/exec"

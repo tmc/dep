@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	// "github.com/metakeule/dep/db"
+	// "github.com/go-dep/dep/db"
 	"database/sql"
 	"database/sql/driver"
+	"github.com/go-dep/gdf"
 	sqlite "github.com/mattn/go-sqlite3"
 	"github.com/metakeule/dbwrap"
-	"github.com/metakeule/gdf"
 )
 
 type pqdrv int

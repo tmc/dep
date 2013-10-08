@@ -2,8 +2,8 @@ package depcore
 
 import (
 	"fmt"
+	"github.com/go-dep/gdf"
 	"github.com/metakeule/fmtdate"
-	"github.com/metakeule/gdf"
 	"os"
 	"path"
 	"path/filepath"

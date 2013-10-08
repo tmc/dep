@@ -2,13 +2,13 @@ package depcore
 
 import (
 	"fmt"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/gdf"
 	"strings"
 )
 
 /*
 import (
-	"github.com/metakeule/cli"
+	"github.com/go-dep/cli"
 )
 
 func CLILint(c *cli.Context, o *Options) ErrorCode {

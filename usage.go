@@ -6,12 +6,12 @@ dep is a tool for the installation and update of Go packages
 It prevents breakage of existing packages in GOPATH with the help
 of a tentative installation in a temporary GOPATH and by detecting
 breakage of dependancies in the go dependancy format (GDF, see 
-http://github.com/metakeule/gdf).
+http://github.com/go-dep/gdf).
 
 Packages that use relative import paths are not supported and might
 break.
 
-For more information, see http://github.com/metakeule/dep
+For more information, see http://github.com/go-dep/dep
 
 Required environment variables:
   
@@ -20,7 +20,7 @@ Required environment variables:
     and temporary installations go to
 
 Package developers, please read: 
-  https://github.com/metakeule/gdf/wiki/Recommendations-for-go-package-developers
+  https://github.com/go-dep/gdf/wiki/Recommendations-for-go-package-developers
 
 PLEASE BE WARNED:
   

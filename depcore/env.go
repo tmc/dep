@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/gdf"
 	"io"
 	"io/ioutil"
 	"os"
@@ -385,7 +385,7 @@ func (env *Environment) Init() (conflicts map[string]map[string][3]string) {
 	// fmt.Printf("init called for %s\n", env.GOPATH)
 	/*
 		for _, p := range ps {
-			if p.Path == "github.com/metakeule/deptest_mod/incompatible" {
+			if p.Path == "github.com/go-dep/deptest_mod/incompatible" {
 				fmt.Printf("registering %s with Struct %#v \n", p.Path, p.Exports["Struct"])
 			}
 		}

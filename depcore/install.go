@@ -4,9 +4,9 @@ package depcore
 import (
 	"bytes"
 	"fmt"
-	// "github.com/metakeule/cli"
-	// "github.com/metakeule/dep/db"
-	"github.com/metakeule/exports"
+	// "github.com/go-dep/cli"
+	// "github.com/go-dep/dep/db"
+	"github.com/go-dep/exports"
 	"os"
 	"os/exec"
 )

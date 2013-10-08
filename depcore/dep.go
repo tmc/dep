@@ -2,7 +2,7 @@ package depcore
 
 import (
 	"encoding/json"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/gdf"
 	"go/build"
 	"os"
 	"path/filepath"

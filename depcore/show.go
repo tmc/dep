@@ -3,7 +3,7 @@ package depcore
 /*
 import (
 	"fmt"
-	"github.com/metakeule/cli"
+	"github.com/go-dep/cli"
 )
 
 func CLIShow(c *cli.Context, o *Options) ErrorCode {
@@ -16,7 +16,7 @@ func CLIShow(c *cli.Context, o *Options) ErrorCode {
 /*
 import (
 	"fmt"
-	"github.com/metakeule/exports"
+	"github.com/go-dep/exports"
 )
 
 func (env *Environment) Json(pkgs *exports.Package) string {

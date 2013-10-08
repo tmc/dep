@@ -2,7 +2,7 @@ package depcore
 
 import (
 	"fmt"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/gdf"
 )
 
 type pkgDiff struct {

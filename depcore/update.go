@@ -4,8 +4,8 @@ package depcore
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/metakeule/cli"
-	"github.com/metakeule/dep/db"
+	"github.com/go-dep/cli"
+	"github.com/go-dep/dep/db"
 	"os"
 )
 
@@ -73,7 +73,7 @@ func CLIUpdate(c *cli.Context, o *Options) ErrorCode {
 
 /*
 import (
-	"github.com/metakeule/exports"
+	"github.com/go-dep/exports"
 	"os"
 	// "path"
 	"path/filepath"

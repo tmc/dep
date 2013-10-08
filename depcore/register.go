@@ -2,9 +2,9 @@ package depcore
 
 import (
 	// "fmt"
-	// "github.com/metakeule/cli"
-	// "github.com/metakeule/dep/db"
-	"github.com/metakeule/gdf"
+	// "github.com/go-dep/cli"
+	// "github.com/go-dep/dep/db"
+	"github.com/go-dep/gdf"
 	// "os"
 )
 

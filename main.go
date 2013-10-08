@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/metakeule/dep/depcore"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/dep/depcore"
+	"github.com/go-dep/gdf"
 	"os"
 	"path/filepath"
 	"strings"

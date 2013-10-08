@@ -3,9 +3,9 @@ package depcore
 import (
 	"bytes"
 	"fmt"
-	// "github.com/metakeule/dep/db"
+	// "github.com/go-dep/dep/db"
 	"encoding/json"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/gdf"
 	"os"
 	"os/exec"
 	"path"
@@ -116,7 +116,7 @@ func NewTestEnv() *testEnv {
 				os.Getenv("GOPATH"),
 				"src",
 				"github.com",
-				"metakeule",
+				"go-dep",
 				"dep",
 				"gopath"))}
 	t.prepare()

@@ -4,8 +4,8 @@ package depcore
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/metakeule/cli"
-	"github.com/metakeule/exports"
+	"github.com/go-dep/cli"
+	"github.com/go-dep/exports"
 	"io/ioutil"
 	"path"
 )
@@ -61,7 +61,7 @@ func CLIRevisions(c *cli.Context, o *Options) ErrorCode {
 
 import (
 	"encoding/json"
-	"github.com/metakeule/gdf"
+	"github.com/go-dep/gdf"
 	"io/ioutil"
 	"path"
 )
