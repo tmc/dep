@@ -252,23 +252,20 @@ Currently there are the following test scenarios
 
 - [compatible changing symbols](http://github.com/go-dep/deptest_compatible)
 - [incompatible changing symbols](http://github.com/go-dep/deptest_incompatible)
-- [partial changing symbols](https://github.com/go-dep/deptest_partial)
+- [partial changing symbols (working)](https://github.com/go-dep/deptest_partial_working)
+- [partial changing symbols (failing)](https://github.com/go-dep/deptest_partial_failing)
+- [package breaking update of another package in same repo](https://github.com/go-dep/deptest_partial)
 - [disappearing symbols](https://github.com/go-dep/deptest_missing)
 
-To run them: go get them and then run go test in the corresponding 
-directory.
+To run them run ./runtests.sh
 
-Warning some tests (e.g. https://github.com/go-dep/deptest_missing) 
-might break the consistency of your registry, i.e. when you run
+If you install the testing packages to work on the them, please be aware, that some tests (e.g. https://github.com/go-dep/deptest_missing) will break the consistency of your registry, i.e. when you run
 
     dep check
 
-you will get an error. That is natural since the packages are meant 
-to test the breakage and the dep tool is indicating that. However, 
-to able to use the dep tool alongside with these packages, you will 
-have to add them to a .depignore file inside your GOPATH.
-You should not do this for "normal" packages however, since they are 
-now ignored by dep.
+you will get an error. That is natural since the packages are meant to test the breakage and the dep tool is reporting these errors. 
+
+However, to able to use the dep tool alongside with these packages, you will have to add them to a .depignore file inside your GOPATH. You should not do this for "normal" packages however, since they are now ignored by dep.
 
 
 Issues or how you can help
