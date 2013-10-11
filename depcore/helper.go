@@ -178,10 +178,11 @@ func (env *testEnv) prepare() {
 	env.inner.Open()
 }
 
-func (env *testEnv) Get(pkg, rev string) error {
+func (env *testEnv) Get(pkg, rev, repoRoot string) error {
 	g := newPackageGetter(env.inner, pkg)
 	r := revision{}
 	r.Rev = rev
+	r.RepoRoot = repoRoot
 	r.VCM = "git"
 	return g.getPkgRev(r)
 }
