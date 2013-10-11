@@ -169,15 +169,18 @@ func NewTestEnv() *testEnv {
 }
 
 func (env *testEnv) prepare() {
-	os.RemoveAll(env.inner.GOPATH)
-	os.MkdirAll(env.inner.GOPATH, 0755)
+	os.RemoveAll(path.Join(env.inner.GOPATH, "src"))
+	os.RemoveAll(path.Join(env.inner.GOPATH, "pkg"))
+	os.RemoveAll(path.Join(env.inner.GOPATH, "bin"))
+	os.MkdirAll(path.Join(env.inner.GOPATH, "src"), 0755)
+	os.MkdirAll(path.Join(env.inner.GOPATH, "pkg"), 0755)
+	os.MkdirAll(path.Join(env.inner.GOPATH, "bin"), 0755)
 	env.inner.Open()
 }
 
 func (env *testEnv) Get(pkg, rev string) error {
 	g := newPackageGetter(env.inner, pkg)
 	r := revision{}
-	r.RepoRoot = g.repoPath(pkg)
 	r.Rev = rev
 	r.VCM = "git"
 	return g.getPkgRev(r)
