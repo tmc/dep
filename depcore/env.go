@@ -52,6 +52,8 @@ var BackupPostFix = "_backup_of_dep_update"
 
 var backupRegExp = regexp.MustCompile(BackupPostFix + "$")
 
+//func (env *Environment) hasGoFiles()
+
 func (env *Environment) shouldIgnorePkg(pkg string) bool {
 	if strings.HasPrefix(path.Base(pkg), ".") {
 		// fmt.Printf("%s\n", path.Base(pkg))
@@ -318,8 +320,13 @@ func (env *Environment) allPackages() (a []*gdf.Package) {
 	if err != nil {
 		panic(err.Error())
 	}
+	//fmt.Printf("pkgs: %#v", prs.packages)
 	for p, _ := range prs.packages {
-		fmt.Print(".")
+		if VERBOSE {
+			fmt.Printf("pkg %s\n", p)
+		} else {
+			fmt.Print(".")
+		}
 		pk, e := env.Pkg(p)
 		if e != nil {
 			continue
@@ -619,14 +626,14 @@ func (o *Environment) Get(pkgPath string, overrides []*gdf.Package, confirmation
 	conflicts, changed, er = t.updatePackage(pkgPath, overrides, confirmation)
 
 	if len(conflicts) > 0 {
-		er = fmt.Errorf("Error: there are %v conflicts", len(conflicts))
+		er = fmt.Errorf("There are %v conflicts", len(conflicts))
 	}
 
 	if er != nil {
 		dir := filepath.Dir(t.GOPATH)
 		new_path := filepath.Join(dir, fmt.Sprintf(TempGOPATHPreFix+"%v", now()))
 		os.Rename(t.GOPATH, new_path)
-		err = fmt.Errorf(er.Error()+"\ncheck or remove the temporary gopath at %s\n", new_path)
+		err = fmt.Errorf(er.Error()+"\nyou may want to check or remove the temporary gopath\n\n\texport GOPATH=%s\n\tcd %s\n\n", new_path, new_path)
 	}
 	return
 }

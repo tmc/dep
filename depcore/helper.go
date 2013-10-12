@@ -41,10 +41,23 @@ func (ø *subPackages) Walker(path string, info os.FileInfo, err error) error {
 		if ø.env.shouldIgnorePkg(pPath) {
 			return filepath.SkipDir
 		}
-		pkg, err := ø.env.Build().ImportDir(path, build.ImportMode(0))
-		if err == nil && pkg != nil {
-			ø.packages[pkg.ImportPath] = true
+		if VERBOSE {
+			fmt.Printf("walk: %s\n", path)
 		}
+		pkg, buildErr := ø.env.Build().ImportDir(path, build.ImportMode(0))
+
+		if buildErr != nil && fmt.Sprintf("%T", buildErr) == "*build.NoGoError" {
+			return nil
+		}
+
+		if buildErr != nil && VERBOSE {
+			fmt.Printf("error for package %s: %s (%T)\n", path, buildErr.Error(), buildErr)
+		}
+		if buildErr == nil && pkg != nil {
+			ø.packages[pPath] = true
+			return nil
+		}
+		return buildErr
 	}
 	return nil
 }
