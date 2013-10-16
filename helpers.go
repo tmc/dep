@@ -222,7 +222,7 @@ Proceed`,
 	case "backups-cleanup":
 		cmd := exec.Command(
 			"find",
-			filepath.Join(env.GOPATH, "src"),
+			filepath.Join(env.GOPATH(), "src"),
 			"-type", "d",
 			"-name", "*"+depcore.BackupPostFix,
 		)
@@ -242,7 +242,7 @@ Proceed`,
 			os.Exit(0)
 		}
 		pkgPaths := make([]string, len(files))
-		srcPath := filepath.Join(env.GOPATH, "src") + "/"
+		srcPath := filepath.Join(env.GOPATH(), "src") + "/"
 		for i, m := range files {
 			pkgPaths[i] = strings.Replace(m, srcPath, "", 1)
 		}

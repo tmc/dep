@@ -20,7 +20,7 @@ type tentativeEnvironment struct {
 // closes db and remove the temporary gopath
 func (tent *tentativeEnvironment) Close() {
 	tent.Environment.Close()
-	os.RemoveAll(tent.GOPATH)
+	os.RemoveAll(tent.GOPATH())
 }
 
 // returns the repos that are candidates for the real update that will be a movement
@@ -89,12 +89,12 @@ func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (changed ma
 		}
 		visited[r] = true
 		var relRepoPath string
-		relRepoPath, err = relativePath(path.Join(tent.GOPATH, "src"), r)
+		relRepoPath, err = relativePath(path.Join(tent.GOPATH(), "src"), r)
 		if err != nil {
 			return
 		}
 
-		target := path.Join(o.GOPATH, "src", relRepoPath)
+		target := path.Join(o.GOPATH(), "src", relRepoPath)
 		oldrevision := ""
 		if _, errExists := os.Stat(target); errExists == nil {
 			rev := o.getRevision(target, "")
@@ -113,7 +113,7 @@ func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (changed ma
 			return
 		}
 		rev := o.getRevision(target, "")
-		rel, errRel := relativePath(path.Join(tent.GOPATH, "src")+"/", r)
+		rel, errRel := relativePath(path.Join(tent.GOPATH(), "src")+"/", r)
 		if errRel != nil {
 			panic("can't get relative path for " + r)
 		}

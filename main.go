@@ -77,7 +77,7 @@ func main() {
 
 	if Args.Verbose {
 		depcore.VERBOSE = true
-		gdf.VERBOSE = true
+		// gdf.VERBOSE = true
 	}
 
 	args := flag.Args()
@@ -88,7 +88,7 @@ func main() {
 
 	env.Open()
 	if len(env.IgnorePkgs) > 0 {
-		S.Warn("ignoring packages in %s", filepath.Join(env.GOPATH, ".depignore"))
+		S.Warn("ignoring packages in %s", filepath.Join(env.GOPATH(), ".depignore"))
 	}
 
 	if cmd != "get" && Args.Override != "" {

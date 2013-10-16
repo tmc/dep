@@ -30,7 +30,7 @@ func (get *packageGetter) repoPath(pkgPath string) string {
 		panic(err.Error())
 	}
 
-	str, err := relativePath(path.Join(get.env.GOPATH, "src"), dir)
+	str, err := relativePath(path.Join(get.env.GOPATH(), "src"), dir)
 
 	if err != nil {
 		panic(err.Error())
@@ -206,7 +206,7 @@ func (get *packageGetter) cleanupRepos(done map[string]bool) {
 	get.scanRepos(get.pkgPath, neededRepos)
 	for r, _ := range done {
 		if !neededRepos[r] {
-			os.RemoveAll(path.Join(get.env.GOPATH, "src", r))
+			os.RemoveAll(path.Join(get.env.GOPATH(), "src", r))
 		}
 	}
 }
@@ -228,7 +228,7 @@ func (get *packageGetter) checkout(rev revision) {
 	}
 
 	if checkoutErr != nil {
-		p := path.Join(get.env.GOPATH, "src", rev.RepoRoot)
+		p := path.Join(get.env.GOPATH(), "src", rev.RepoRoot)
 		panic("can't checkout " + p + " rev " + rev.Rev + ":\n" + checkoutErr.Error())
 	}
 }
@@ -236,7 +236,7 @@ func (get *packageGetter) checkout(rev revision) {
 // reads the tracked revisions for imports as defined in the revFile
 func (get *packageGetter) trackedRevisions(pkg string) (r map[string]revision, err error) {
 	r = map[string]revision{}
-	data, e := ioutil.ReadFile(path.Join(get.env.GOPATH, "src", pkg, revFileName))
+	data, e := ioutil.ReadFile(path.Join(get.env.GOPATH(), "src", pkg, revFileName))
 	if e != nil {
 		return
 	}
@@ -261,7 +261,7 @@ func (get *packageGetter) checkoutHg(dir string, rev string) error {
 
 func (get *packageGetter) checkoutCmd(dir string, c string, args ...string) error {
 	cmd := exec.Command(c, args...)
-	cmd.Dir = path.Join(get.env.GOPATH, "src", dir)
+	cmd.Dir = path.Join(get.env.GOPATH(), "src", dir)
 	cmd.Env = get.env.cmdEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stderr = &stderr

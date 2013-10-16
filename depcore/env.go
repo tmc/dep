@@ -24,14 +24,12 @@ type Environment struct {
 	IgnorePkgs map[string]bool
 }
 
-var GOROOT = gdf.NewGoRoot(runtime.GOROOT())
-
 func NewEnv(gopath string) (ø *Environment) {
 	if gopath == "" {
 		panic("can't create environment for empty GOPATH")
 	}
 	ø = &Environment{}
-	ø.Environment = gdf.NewEnvironment(GOROOT, gopath)
+	ø.Environment = gdf.NewEnvironment(runtime.GOROOT(), gopath)
 	ø.TMPDIR = os.Getenv("DEP_TMP")
 	ø.mkdb()
 	ø.IgnorePkgs = map[string]bool{}
@@ -70,7 +68,7 @@ func (env *Environment) shouldIgnorePkg(pkg string) bool {
 }
 
 func (env *Environment) RevFile(pkg string) string {
-	return path.Join(env.GOPATH, "src", pkg, revFileName)
+	return path.Join(env.GOPATH(), "src", pkg, revFileName)
 }
 
 // for each import, get the revisions
@@ -191,7 +189,7 @@ func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *gdf.Pac
 func (o *Environment) Open() {
 	subDirs := [3]string{"src", "bin", "pkg"}
 	for _, s := range subDirs {
-		d := path.Join(o.GOPATH, s)
+		d := path.Join(o.GOPATH(), s)
 		stat, err := os.Stat(d)
 		if err != nil {
 			errMk := os.Mkdir(d, 0755)
@@ -239,8 +237,8 @@ func (o *Environment) getRevCmd(dir string, c string, args ...string) string {
 	cmd := exec.Command(c, args...)
 	cmd.Dir = dir
 	cmd.Env = []string{
-		fmt.Sprintf(`GOPATH=%s`, o.GOPATH),
-		fmt.Sprintf(`GOROOT=%s`, o.GOROOT.Path),
+		fmt.Sprintf(`GOPATH=%s`, o.GOPATH()),
+		fmt.Sprintf(`GOROOT=%s`, o.GOROOT()),
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
 
@@ -300,8 +298,8 @@ func (o *Environment) getRevision(dir string, parent string) (rev revision) {
 // setup the env for a cmd
 func (env *Environment) cmdEnv() []string {
 	return []string{
-		fmt.Sprintf(`GOPATH=%s`, env.GOPATH),
-		fmt.Sprintf(`GOROOT=%s`, env.GOROOT.Path),
+		fmt.Sprintf(`GOPATH=%s`, env.GOPATH()),
+		fmt.Sprintf(`GOROOT=%s`, env.GOROOT()),
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
 }
@@ -318,7 +316,7 @@ func (o *Environment) goTest(dir string) ([]byte, error) {
 func (env *Environment) allPackages() (a []*gdf.Package) {
 	a = []*gdf.Package{}
 	prs := newSubPackages(env)
-	err := filepath.Walk(path.Join(env.GOPATH, "src"), prs.Walker)
+	err := filepath.Walk(path.Join(env.GOPATH(), "src"), prs.Walker)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -341,13 +339,13 @@ func (env *Environment) allPackages() (a []*gdf.Package) {
 
 func (env *Environment) cleandb() {
 	env.Close()
-	os.Remove(path.Join(env.GOPATH, "dep.db"))
+	os.Remove(path.Join(env.GOPATH(), "dep.db"))
 	env.Open()
 }
 
 // creates the db file if it is not there
 func (env *Environment) mkdb() {
-	dbFile := path.Join(env.GOPATH, "dep.db")
+	dbFile := path.Join(env.GOPATH(), "dep.db")
 	_, dbFileerr := os.Stat(dbFile)
 	dB, err := db_open(env, dbFile)
 	if err != nil {
@@ -360,7 +358,7 @@ func (env *Environment) mkdb() {
 }
 
 func (env *Environment) cpdb(dbenv *Environment, target string) (dB *db, err error) {
-	dbFile := path.Join(env.GOPATH, "dep.db")
+	dbFile := path.Join(env.GOPATH(), "dep.db")
 	var in, out *os.File
 	in, err = os.Open(dbFile)
 
@@ -369,7 +367,7 @@ func (env *Environment) cpdb(dbenv *Environment, target string) (dB *db, err err
 	}
 
 	defer in.Close()
-	targetPath := path.Join(dbenv.GOPATH, target)
+	targetPath := path.Join(dbenv.GOPATH(), target)
 
 	out, err = os.Create(targetPath)
 
@@ -481,7 +479,7 @@ func (o *Environment) getJson(pkg string) string {
 }
 
 func (o *Environment) loadJson(pkgPath string) (ø *gdf.Package) {
-	file, _ := filepath.Abs(path.Join(o.GOPATH, "src", pkgPath, "dep.json"))
+	file, _ := filepath.Abs(path.Join(o.GOPATH(), "src", pkgPath, "dep.json"))
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err.Error())
@@ -632,9 +630,9 @@ func (o *Environment) Get(pkgPath string, overrides []*gdf.Package, confirmation
 	}
 
 	if er != nil {
-		dir := filepath.Dir(t.GOPATH)
+		dir := filepath.Dir(t.GOPATH())
 		new_path := filepath.Join(dir, fmt.Sprintf(TempGOPATHPreFix+"%v", now()))
-		os.Rename(t.GOPATH, new_path)
+		os.Rename(t.GOPATH(), new_path)
 		err = fmt.Errorf(er.Error()+"\nyou may want to check or remove the temporary gopath\n\n\texport GOPATH=%s\n\tcd %s\n\n", new_path, new_path)
 	}
 	return

@@ -182,12 +182,12 @@ func NewTestEnv() *testEnv {
 }
 
 func (env *testEnv) prepare() {
-	os.RemoveAll(path.Join(env.inner.GOPATH, "src"))
-	os.RemoveAll(path.Join(env.inner.GOPATH, "pkg"))
-	os.RemoveAll(path.Join(env.inner.GOPATH, "bin"))
-	os.MkdirAll(path.Join(env.inner.GOPATH, "src"), 0755)
-	os.MkdirAll(path.Join(env.inner.GOPATH, "pkg"), 0755)
-	os.MkdirAll(path.Join(env.inner.GOPATH, "bin"), 0755)
+	os.RemoveAll(path.Join(env.inner.GOPATH(), "src"))
+	os.RemoveAll(path.Join(env.inner.GOPATH(), "pkg"))
+	os.RemoveAll(path.Join(env.inner.GOPATH(), "bin"))
+	os.MkdirAll(path.Join(env.inner.GOPATH(), "src"), 0755)
+	os.MkdirAll(path.Join(env.inner.GOPATH(), "pkg"), 0755)
+	os.MkdirAll(path.Join(env.inner.GOPATH(), "bin"), 0755)
 	env.inner.Open()
 }
 
@@ -222,7 +222,7 @@ func (ev *testEnv) Update(pkg, rev string) (changed map[string][2]string, err er
 	master := getmasterRevision(pkg, dir)
 
 	// check, if revisions are correct
-	if env.getRevisionGit(path.Join(env.GOPATH, "src", pkg)) != rev {
+	if env.getRevisionGit(path.Join(env.GOPATH(), "src", pkg)) != rev {
 		panic(fmt.Sprintf("revision %#v not checked out for package %#v\n", rev, pkg))
 	}
 
@@ -232,7 +232,7 @@ func (ev *testEnv) Update(pkg, rev string) (changed map[string][2]string, err er
 	}
 
 	for d, drev := range depsBefore {
-		if r := env.getRevisionGit(path.Join(env.GOPATH, "src", d)); r != drev.Rev {
+		if r := env.getRevisionGit(path.Join(env.GOPATH(), "src", d)); r != drev.Rev {
 			panic(fmt.Sprintf("revision before update %#v not checked out, expected: %#v for dependancy package %#v\n", r, drev.Rev, d))
 		}
 	}
@@ -271,7 +271,7 @@ func (ev *testEnv) Update(pkg, rev string) (changed map[string][2]string, err er
 	}
 
 	for d, drev := range depsAfter {
-		if r := env.getRevisionGit(path.Join(env.GOPATH, "src", d)); r != drev.Rev {
+		if r := env.getRevisionGit(path.Join(env.GOPATH(), "src", d)); r != drev.Rev {
 			err = fmt.Errorf("revision after update %#v not matching expected: %#v for dependancy package %#v\n", r, drev.Rev, d)
 			return
 		}
