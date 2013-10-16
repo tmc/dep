@@ -112,7 +112,7 @@ func (get *packageGetter) getImport(pkgPath string, rev *revision, done map[stri
 // here (simply passed to getImport)
 func (get *packageGetter) getImports(pkgPath string, done map[string]bool) (err error) {
 	var pkg *gdf.Package
-	pkg, err = get.env.Pkg(pkgPath)
+	pkg, err = get.env.GetPkg(pkgPath)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func (get *packageGetter) get() (err error) {
 
 func (get *packageGetter) scanRepos(pkgPath string, repos map[string]bool) {
 	repos[get.repoPath(pkgPath)] = true
-	pkg := get.env.MustPkg(pkgPath)
+	pkg := get.env.MustGetPkg(pkgPath)
 	for imported, _ := range pkg.ImportedPackages {
 		get.scanRepos(imported, repos)
 	}

@@ -24,12 +24,14 @@ type Environment struct {
 	IgnorePkgs map[string]bool
 }
 
+var GOROOT = gdf.NewGoRoot(runtime.GOROOT())
+
 func NewEnv(gopath string) (ø *Environment) {
 	if gopath == "" {
 		panic("can't create environment for empty GOPATH")
 	}
 	ø = &Environment{}
-	ø.Environment = gdf.NewEnv(runtime.GOROOT(), gopath)
+	ø.Environment = gdf.NewEnvironment(GOROOT, gopath)
 	ø.TMPDIR = os.Getenv("DEP_TMP")
 	ø.mkdb()
 	ø.IgnorePkgs = map[string]bool{}
@@ -75,7 +77,7 @@ func (env *Environment) RevFile(pkg string) string {
 func (o *Environment) recursiveImportRevisions(revisions map[string]revision, pkg *gdf.Package, parent string) {
 	for im, _ := range pkg.ImportedPackages {
 		if _, has := revisions[im]; !has {
-			p, err := o.Pkg(im)
+			p, err := o.GetPkg(im)
 			if err != nil {
 				panic(fmt.Sprintf("package %s does not exist", im))
 			}
@@ -116,7 +118,7 @@ func (o *Environment) NumPkgsInRegistry() int {
 }
 
 func (o *Environment) pkgJson(path string) (b []byte, internal bool) {
-	p, err := o.Pkg(path)
+	p, err := o.GetPkg(path)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -153,7 +155,7 @@ func (env *Environment) packageToDBFormat(pkgMap map[string]*dbPkg, pkg *gdf.Pac
 			if _, has := pkgMap[im]; has {
 				continue
 			}
-			imPkg, err := env.Pkg(im)
+			imPkg, err := env.GetPkg(im)
 			if err != nil {
 				panic(fmt.Sprintf("%s imports not existing package %s", pkg.Path, im))
 			}
@@ -327,7 +329,7 @@ func (env *Environment) allPackages() (a []*gdf.Package) {
 		} else {
 			fmt.Print(".")
 		}
-		pk, e := env.Pkg(p)
+		pk, e := env.GetPkg(p)
 		if e != nil {
 			continue
 		}
@@ -466,7 +468,7 @@ func (env *Environment) checkIntegrity(ps ...*gdf.Package) (conflicts map[string
 }
 
 func (o *Environment) getJson(pkg string) string {
-	p, err := o.Pkg(pkg)
+	p, err := o.GetPkg(pkg)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -567,7 +569,7 @@ func (o *Environment) Track(pkg *gdf.Package, recursive bool) (data []byte, err 
 	revisions := map[string]revision{}
 	for im, _ := range pkg.ImportedPackages {
 		//o.trackedImportRevisions(pkg.Path)
-		iPkg, e := o.Pkg(im)
+		iPkg, e := o.GetPkg(im)
 
 		if e != nil {
 			err = e
@@ -576,7 +578,7 @@ func (o *Environment) Track(pkg *gdf.Package, recursive bool) (data []byte, err 
 		if iPkg.Internal {
 			continue
 		}
-		revisions[im] = o.getRevision(iPkg.Dir, pkg.Path)
+		revisions[im] = o.getRevision(iPkg.Dir(), pkg.Path)
 		if recursive {
 			o.recursiveImportRevisions(revisions, iPkg, pkg.Path)
 			continue
@@ -588,13 +590,13 @@ func (o *Environment) Track(pkg *gdf.Package, recursive bool) (data []byte, err 
 		return
 	}
 
-	filename := path.Join(pkg.Dir, revFileName)
+	filename := path.Join(pkg.Dir(), revFileName)
 	err = ioutil.WriteFile(filename, data, 0644)
 	return
 }
 
 func lintInit(pkg *gdf.Package) error {
-	if pkg.RawExports["init"].String() == "" {
+	if pkg.Exports["init"] == "" {
 		return nil
 	}
 	if len(pkg.RawInits) > 1 {

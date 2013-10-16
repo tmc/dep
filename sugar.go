@@ -68,7 +68,7 @@ func (s sugar) DefaultPackagePath() string {
 
 func (s sugar) Package(pkgPath string) {
 	var err error
-	pkg, err = env.Pkg(pkgPath)
+	pkg, err = env.GetPkg(pkgPath)
 	if err != nil {
 		panic(err.Error())
 	}

@@ -29,7 +29,7 @@ func (tent *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 	pkgs = []*gdf.Package{}
 
 	for _, p := range tent.allPackages() {
-		r := _repoRoot(p.Dir)
+		r := _repoRoot(p.Dir())
 		if skip[r] {
 			continue
 		}
@@ -37,7 +37,7 @@ func (tent *tentativeEnvironment) getCandidates() (pkgs []*gdf.Package) {
 		// package is updated
 		if err == nil {
 			// package is updated only, if the revision changed
-			if tent.getRevision(p.Dir, "").Rev == tent.Original.getRevision(origDir, "").Rev {
+			if tent.getRevision(p.Dir(), "").Rev == tent.Original.getRevision(origDir, "").Rev {
 				skip[r] = true
 				continue
 			}
@@ -75,7 +75,7 @@ func (tent *tentativeEnvironment) movePackages(pkgs ...*gdf.Package) (changed ma
 	changed = map[string][2]string{}
 
 	for _, pkg := range pkgs {
-		dir := pkg.Dir
+		dir := pkg.Dir()
 		_, e := os.Stat(dir)
 
 		// already moved
