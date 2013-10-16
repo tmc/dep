@@ -301,7 +301,7 @@ func (o *Environment) getRevision(dir string, parent string) (rev revision) {
 func (env *Environment) cmdEnv() []string {
 	return []string{
 		fmt.Sprintf(`GOPATH=%s`, env.GOPATH),
-		fmt.Sprintf(`GOROOT=%s`, env.GOROOT),
+		fmt.Sprintf(`GOROOT=%s`, env.GOROOT.Path),
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
 }
