@@ -240,7 +240,7 @@ func (o *Environment) getRevCmd(dir string, c string, args ...string) string {
 	cmd.Dir = dir
 	cmd.Env = []string{
 		fmt.Sprintf(`GOPATH=%s`, o.GOPATH),
-		fmt.Sprintf(`GOROOT=%s`, o.GOROOT),
+		fmt.Sprintf(`GOROOT=%s`, o.GOROOT.Path),
 		fmt.Sprintf(`PATH=%s`, os.Getenv("PATH")),
 	}
 
