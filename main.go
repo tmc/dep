@@ -33,7 +33,7 @@ func initV1() {
 	if os.Getenv("DEP_TMP") == "" {
 		S.Error("DEP_TMP not set")
 	}
-	env = depcore.NewEnv(strings.Split(os.Getenv("GOPATH"), ";")[0])
+	env = depcore.NewEnv(strings.Split(os.Getenv("GOPATH"), ":")[0])
 	env.TMPDIR = os.Getenv("DEP_TMP")
 
 	flag.BoolVar(&Args.Verbose, "verbose", false, "print details about the actions taken")
