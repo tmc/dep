@@ -30,9 +30,6 @@ func initV1() {
 	if os.Getenv("GOPATH") == "" {
 		S.Error("GOPATH not set")
 	}
-	if os.Getenv("DEP_TMP") == "" {
-		S.Error("DEP_TMP not set")
-	}
 	env = depcore.NewEnv(strings.Split(os.Getenv("GOPATH"), ":")[0])
 	env.TMPDIR = os.Getenv("DEP_TMP")
 
@@ -63,6 +60,9 @@ func main() {
 	flag.Usage = func() { S.Out(usage) }
 
 	flag.Parse()
+	if os.Getenv("DEP_TMP") == "" {
+		S.Error("DEP_TMP not set")
+	}
 	if Args.Verbose && Args.Json {
 		S.Error("-verbose and -json option are mutually exclusive")
 	}
